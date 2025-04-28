@@ -113,9 +113,6 @@ body {
   @apply mx-auto p-4;
 }
 
-.text-muted-foreground {
-  @apply text-muted-foreground;
-}
 
 /* Additional styles for UI enhancements */
 .topic-card-title {
@@ -123,7 +120,8 @@ body {
 }
 
 .topic-card-level {
-  @apply text-sm text-muted-foreground; /* Subdued level */
+  @apply text-sm; /* Subdued level */
+  color: hsl(var(--muted-foreground));
 }
 
 /* Add hover effect to cards */
@@ -135,6 +133,13 @@ body {
 .electric-blue {
   color: hsl(var(--electric-blue));
 }
+
+.text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+
+
 
 
 

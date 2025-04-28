@@ -2,11 +2,11 @@
 
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
-import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
+import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
 import {useEffect, useState} from 'react';
 import {authProviders} from '@/config/auth';
 import {Skeleton} from "@/components/ui/skeleton";
-import {MagnifyingGlass} from "lucide-react";
+import {Search} from "lucide-react";
 
 const TopicCard = ({topic, level, description}: { topic: string; level: string; description: string }) => (
   <Card className="transition-all hover:scale-105">
@@ -75,7 +75,7 @@ export default function Home() {
 
       <section className="p-4">
         <div className="mb-4 flex items-center space-x-2">
-          <MagnifyingGlass className="h-5 w-5 text-muted-foreground"/>
+          <Search className="h-5 w-5 text-muted-foreground"/>
           <input
             type="search"
             placeholder="Search topics..."
