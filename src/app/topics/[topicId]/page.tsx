@@ -187,8 +187,6 @@ export default function TopicPage() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [showAiTutor, setShowAiTutor] = useState(false);
-  // selectedLevel is still useful for passing context to AI/Quiz, derived from topicLevel
-  const [selectedLevel, setSelectedLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
   const { toast } = useToast();
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
@@ -216,9 +214,6 @@ export default function TopicPage() {
 
       setTopicData(data || null);
       setTopicLevel(level); // Set the determined level
-      if (level) {
-        setSelectedLevel(level); // Keep selectedLevel sync'd for AI/Quiz
-      }
 
       setLoading(false);
     }, 500);
@@ -475,9 +470,11 @@ export default function TopicPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">{topicData.title}</h1>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate max-w-xs sm:max-w-md md:max-w-lg"> {/* Added truncate and max-width */}
+            {topicData.title}
+          </h1>
         </div>
-         <div className="flex items-center gap-1 sm:gap-2">
+         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0"> {/* Added flex-shrink-0 */}
             <Button variant="ghost" size="icon" onClick={handleOpenEditDialog} aria-label="Edit topic">
               <Pencil className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
