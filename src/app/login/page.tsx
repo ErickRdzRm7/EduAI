@@ -9,9 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Chrome, Facebook } from 'lucide-react'; // Placeholder, Facebook might not be in lucide
+import { Facebook } from 'lucide-react'; // Assuming Facebook icon is needed
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 // Simple SVG for Microsoft logo (replace with a better one if available)
 const MicrosoftLogo = () => (
@@ -35,29 +36,34 @@ const GoogleLogo = () => (
 
 
 export default function LoginPage() {
-  // Placeholder authentication handlers
-  const handleGoogleSignIn = () => {
-    alert('Signing in with Google...');
-    // Implement actual Google sign-in logic here
+  const router = useRouter();
+
+  // Generic sign-in handler that simulates authentication
+  const handleSignIn = (provider: string) => {
+    console.log(`Attempting to sign in with ${provider}...`);
+    // Simulate a successful authentication
+    try {
+      localStorage.setItem('isAuthenticated', 'true');
+      // Add user details to local storage if needed, e.g.,
+      // localStorage.setItem('userName', 'Demo User');
+      router.push('/'); // Redirect to the main page upon successful "login"
+    } catch (error) {
+      console.error("Error accessing localStorage:", error);
+      alert('Login failed. Could not save authentication status.'); // Inform user
+    }
   };
 
-  const handleMicrosoftSignIn = () => {
-    alert('Signing in with Microsoft...');
-    // Implement actual Microsoft sign-in logic here
-  };
-
-  const handleFacebookSignIn = () => {
-    alert('Signing in with Facebook...');
-    // Implement actual Facebook sign-in logic here
-  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
+       {/* Back button is removed as this is the entry point when not logged in */}
+       {/*
        <Link href="/" passHref className="absolute top-4 left-4">
           <Button variant="outline" size="icon" aria-label="Go back home">
               <ArrowLeft className="h-4 w-4" />
           </Button>
-      </Link>
+       </Link>
+       */}
       <Card className="w-full max-w-sm mx-4">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Sign In to EduAI</CardTitle>
@@ -66,18 +72,17 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Button variant="outline" onClick={handleGoogleSignIn} className="w-full">
+          <Button variant="outline" onClick={() => handleSignIn('Google')} className="w-full">
             <GoogleLogo />
-            Sign in with Google
+            <span className="ml-2">Sign in with Google</span> {/* Added margin */}
           </Button>
-          <Button variant="outline" onClick={handleMicrosoftSignIn} className="w-full">
+          <Button variant="outline" onClick={() => handleSignIn('Microsoft')} className="w-full">
              <MicrosoftLogo />
-            Sign in with Microsoft
+             <span className="ml-2">Sign in with Microsoft</span> {/* Added margin */}
           </Button>
-          <Button variant="outline" onClick={handleFacebookSignIn} className="w-full">
-             {/* Using Lucide Facebook icon as placeholder - might need a specific SVG */}
+          <Button variant="outline" onClick={() => handleSignIn('Facebook')} className="w-full">
             <Facebook className="h-5 w-5" />
-            Sign in with Facebook
+            <span className="ml-2">Sign in with Facebook</span> {/* Added margin */}
           </Button>
         </CardContent>
       </Card>

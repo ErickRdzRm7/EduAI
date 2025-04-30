@@ -129,22 +129,17 @@ body {
     @apply bg-accent text-accent-foreground px-2 py-1 rounded-md text-xs font-medium inline-block; /* Style for level badge */
   }
 
-  /* Footer styling */
-  .footer-text {
-    @apply text-center text-sm; /* Added text-sm */
-    color: hsl(var(--muted-foreground));
-  }
+  /* Footer styling removed - applied directly in page.tsx */
+  /* .footer-text { ... } */
 
   /* Input focus state */
   .search-input:focus {
     border-color: hsl(var(--accent));
   }
 
-  /* Remove circular dependency causing rules */
-  .empty-state-message {
-    @apply mt-8 text-center;
-    color: hsl(var(--muted-foreground));
-  }
+  /* Empty state message styling removed - applied directly in page.tsx */
+  /* .empty-state-message { ... } */
+
 
   .header-border {
     @apply border-b border-border pb-4; /* Use theme border color */
