@@ -24,7 +24,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react'; // Import useEffect and useState
 
 const formSchema = z.object({
   topicName: z.string().min(2, {
@@ -38,6 +39,24 @@ const formSchema = z.object({
 
 export default function RequestTopicPage() {
   const { toast } = useToast();
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark
+
+  // Load theme from localStorage on initial mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      // No need to manipulate documentElement here, RootLayout handles it
+    }
+    // No else needed, default state is 'dark'
+  }, []);
+
+  // Update localStorage when theme state changes
+   useEffect(() => {
+    // Only update localStorage, RootLayout handles the class toggling
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,15 +80,35 @@ export default function RequestTopicPage() {
     }, 500);
   }
 
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+     // Trigger re-render, RootLayout will handle class change via script/state
+    if (typeof window !== 'undefined') {
+        const newTheme = theme === 'light' ? 'dark' : 'light';
+         if (newTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+         localStorage.setItem('theme', newTheme); // Ensure localStorage is updated immediately
+    }
+  };
+
+
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-       <header className="flex items-center gap-4 header-border">
-        <Link href="/" passHref>
-            <Button variant="outline" size="icon" aria-label="Go back home">
-                 <ArrowLeft className="h-4 w-4" />
-            </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Request New Topic</h1>
+       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
+        <div className="flex items-center gap-4"> {/* Group back button and title */}
+            <Link href="/" passHref>
+                <Button variant="outline" size="icon" aria-label="Go back home">
+                     <ArrowLeft className="h-4 w-4" />
+                </Button>
+            </Link>
+            <h1 className="text-2xl font-bold">Request New Topic</h1>
+        </div>
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        </Button>
       </header>
 
       <section className="p-4 max-w-2xl mx-auto flex-grow">

@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState, type ReactNode } from "react";
 import { authProviders } from '@/config/auth';
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Code, Calculator, FlaskConical, Brain, Plus } from "lucide-react"; // Import Plus icon
+import { Search, Code, Calculator, FlaskConical, Brain, Plus, Moon, Sun } from "lucide-react"; // Import Plus, Moon, Sun icons
 import Link from 'next/link'; // Import Link from next/link
 
 // Helper function to get icon based on topic
@@ -58,9 +58,38 @@ const TopicCardSkeleton = () => (
 export default function Home() {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark
+
+  // Load theme from localStorage on initial mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } else {
+      // If no theme saved, default to dark and add class
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  // Apply theme class when theme state changes
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [theme]);
+
 
   useEffect(() => {
-    // Simulate loading
+    // Simulate loading user data
     setTimeout(() => {
       setUser({
         name: 'John Doe',
@@ -71,32 +100,41 @@ export default function Home() {
     }, 1500); // Increased loading time for skeleton visibility
   }, []);
 
+  const toggleTheme = () => {
+    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen"> {/* Added min-h-screen */}
       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border"> {/* Added header-border class */}
         <h1 className="text-2xl font-bold">EduAI</h1> {/* Consider replacing with a logo */}
-        {loading ? (
-           <div className="flex items-center gap-2">
-             <Skeleton className="h-10 w-10 rounded-full" />
-             <Skeleton className="h-5 w-20" />
-           </div>
-        ) : user ? (
-          <div className="flex items-center gap-2">
-            <Avatar>
-              <AvatarImage src={user.imageUrl} alt={user.name}/>
-              <AvatarFallback>{user.name ? user.name[0] : 'U'}</AvatarFallback>
-            </Avatar>
-            <span>{user.name}</span>
-          </div>
-        ) : (
-          <div className="flex gap-2"> {/* Added gap for buttons */}
-            {authProviders.map((provider) => (
-              <Button key={provider.id} onClick={() => alert(`Sign in with ${provider.name}`)} variant="outline" size="sm">
-                Sign in with {provider.name}
-              </Button>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-4"> {/* Wrapper for theme toggle and user info */}
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          </Button>
+          {loading ? (
+             <div className="flex items-center gap-2">
+               <Skeleton className="h-10 w-10 rounded-full" />
+               <Skeleton className="h-5 w-20" />
+             </div>
+          ) : user ? (
+            <div className="flex items-center gap-2">
+              <Avatar>
+                <AvatarImage src={user.imageUrl} alt={user.name}/>
+                <AvatarFallback>{user.name ? user.name[0] : 'U'}</AvatarFallback>
+              </Avatar>
+              <span>{user.name}</span>
+            </div>
+          ) : (
+            <div className="flex gap-2"> {/* Added gap for buttons */}
+              {authProviders.map((provider) => (
+                <Button key={provider.id} onClick={() => alert(`Sign in with ${provider.name}`)} variant="outline" size="sm">
+                  Sign in with {provider.name}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
       <section className="p-4 flex-grow"> {/* Added flex-grow */}
