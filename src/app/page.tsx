@@ -70,7 +70,7 @@ const TopicCard = ({
   const slug = createSlug(topic);
   return (
     <Link href={`/topics/${slug}`} passHref>
-        <Card className="card transition-all hover:scale-105 hover:shadow-lg"> {/* Applied hover effect */}
+        <Card className="card transition-all hover:shadow-lg hover:scale-105"> {/* Applied hover effect */}
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
         <div className="flex items-center">
             {getTopicIcon(topic)}
@@ -151,20 +151,34 @@ export default function Home() {
         document.documentElement.classList.remove('dark');
       }
     } else {
+      // If no theme is saved, default to dark and save it
+      setTheme('dark');
       document.documentElement.classList.add('dark');
+       try {
+         localStorage.setItem('theme', 'dark');
+       } catch (error) {
+         console.error("Could not save default theme preference:", error);
+       }
     }
   }, []);
 
-  // Theme application effect
+
+  // Theme application effect - applies class and saves to localStorage
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    if (typeof window !== 'undefined') { // Ensure this runs only on the client
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      try {
+        localStorage.setItem('theme', theme);
+      } catch (error) {
+        console.error("Could not save theme preference:", error);
+      }
     }
   }, [theme]);
+
 
   // Topic loading simulation effect
   useEffect(() => {
@@ -176,19 +190,8 @@ export default function Home() {
   }, [authLoading, user]);
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => {
-        const newTheme = prevTheme === 'light' ? 'dark' : 'light';
-        if (typeof window !== 'undefined') {
-         if (newTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-         localStorage.setItem('theme', newTheme); // Ensure localStorage is updated immediately
-        }
-        return newTheme;
-    });
-};
+    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+  };
 
 
   const handleSignOut = () => {

@@ -41,20 +41,33 @@ export default function RequestTopicPage() {
   const { toast } = useToast();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark
 
-  // Load theme from localStorage on initial mount
+   // Theme loading effect
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const savedTheme = localStorage.getItem('theme') as
+      | 'light'
+      | 'dark'
+      | null;
     if (savedTheme) {
       setTheme(savedTheme);
-      // No need to manipulate documentElement here, RootLayout handles it
+      // RootLayout handles initial class application via script
     }
-    // No else needed, default state is 'dark'
+    // If no theme is saved, the 'dark' state default is already set
   }, []);
 
-  // Update localStorage when theme state changes
-   useEffect(() => {
-    // Only update localStorage, RootLayout handles the class toggling
-    localStorage.setItem('theme', theme);
+  // Theme application effect - applies class and saves to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') { // Ensure this runs only on the client
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      try {
+        localStorage.setItem('theme', theme);
+      } catch (error) {
+        console.error("Could not save theme preference:", error);
+      }
+    }
   }, [theme]);
 
 
@@ -82,16 +95,6 @@ export default function RequestTopicPage() {
 
   const toggleTheme = () => {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
-     // Trigger re-render, RootLayout will handle class change via script/state
-    if (typeof window !== 'undefined') {
-        const newTheme = theme === 'light' ? 'dark' : 'light';
-         if (newTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-         localStorage.setItem('theme', newTheme); // Ensure localStorage is updated immediately
-    }
   };
 
 
@@ -181,11 +184,11 @@ export default function RequestTopicPage() {
         </Form>
       </section>
 
-       <footer className="p-4 mt-auto">
-        <p className="footer-text">
-          © {new Date().getFullYear()} EduAI. All rights reserved.
-        </p>
-      </footer>
+       <footer className="p-4 mt-auto text-center text-sm text-muted-foreground">
+         <p className="footer-text">
+           © {new Date().getFullYear()} EduAI. All rights reserved.
+         </p>
+       </footer>
     </div>
   );
 }

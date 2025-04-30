@@ -11,6 +11,7 @@ import { ArrowLeft, Moon, Sun, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 // Mock user data structure - Ideally fetched from auth context/API
 interface User {
@@ -46,23 +47,35 @@ export default function ProfilePage() {
     checkAuth();
   }, [router]);
 
-  // Theme Management
+   // Theme loading effect
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const savedTheme = localStorage.getItem('theme') as
+      | 'light'
+      | 'dark'
+      | null;
     if (savedTheme) {
       setTheme(savedTheme);
-      // RootLayout handles class toggling
+      // RootLayout handles initial class application via script
     }
+    // If no theme is saved, the 'dark' state default is already set
   }, []);
 
+  // Theme application effect - applies class and saves to localStorage
   useEffect(() => {
-    localStorage.setItem('theme', theme);
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (typeof window !== 'undefined') { // Ensure this runs only on the client
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      try {
+        localStorage.setItem('theme', theme);
+      } catch (error) {
+        console.error("Could not save theme preference:", error);
+      }
     }
   }, [theme]);
+
 
   const toggleTheme = () => {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
@@ -70,8 +83,47 @@ export default function ProfilePage() {
 
   if (authLoading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <p>Loading profile...</p> {/* Or use Skeleton */}
+      <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
+        <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
+           <div className="flex items-center gap-4">
+             <Skeleton className="h-8 w-8 rounded-md" />
+             <Skeleton className="h-8 w-32 rounded-md" />
+           </div>
+           <Skeleton className="h-8 w-8 rounded-full" />
+        </header>
+        <section className="p-4 max-w-2xl mx-auto flex-grow w-full">
+            <Card>
+                <CardHeader className="items-center text-center">
+                    <Skeleton className="h-24 w-24 rounded-full mb-4" />
+                    <Skeleton className="h-6 w-32 mb-2 rounded-md"/>
+                    <Skeleton className="h-4 w-48 rounded-md"/>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <Separator />
+                    <div className="space-y-4">
+                        <Skeleton className="h-5 w-36 mb-4 rounded-md"/>
+                         <div className="grid gap-2">
+                             <Skeleton className="h-4 w-12 rounded-md"/>
+                             <Skeleton className="h-10 w-full rounded-md"/>
+                         </div>
+                         <div className="grid gap-2">
+                             <Skeleton className="h-4 w-12 rounded-md"/>
+                             <Skeleton className="h-10 w-full rounded-md"/>
+                         </div>
+                         <Skeleton className="h-10 w-36 rounded-md"/>
+                    </div>
+                    <Separator />
+                    <div className="space-y-4">
+                        <Skeleton className="h-5 w-48 mb-4 rounded-md"/>
+                        <Skeleton className="h-10 w-40 rounded-md"/>
+                        <Skeleton className="h-10 w-40 rounded-md"/>
+                    </div>
+                </CardContent>
+            </Card>
+        </section>
+         <footer className="p-4 mt-auto text-center">
+           <Skeleton className="h-4 w-1/2 mx-auto rounded-md"/>
+         </footer>
       </div>
     );
   }

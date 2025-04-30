@@ -198,14 +198,9 @@ export default function TopicPage() {
   const toggleTheme = () => {
     setTheme((prevTheme) => {
         const newTheme = prevTheme === 'light' ? 'dark' : 'light';
-        if (typeof window !== 'undefined') {
-         if (newTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-         localStorage.setItem('theme', newTheme);
-        }
+        // The class toggling logic in RootLayout should handle the visual change
+        // Here we just update the state and localStorage
+        localStorage.setItem('theme', newTheme);
         return newTheme;
     });
 };
@@ -220,24 +215,39 @@ export default function TopicPage() {
              <Skeleton className="h-8 w-8 rounded-md" />
              <Skeleton className="h-8 w-48 rounded-md" />
            </div>
-           <Skeleton className="h-8 w-8 rounded-full" />
+           <div className="flex items-center gap-4">
+             <Skeleton className="h-8 w-8 rounded-full" />
+             <Skeleton className="h-8 w-28 rounded-md" />
+           </div>
         </header>
         {/* Skeleton Content */}
-        <div className="p-4 space-y-4">
-            <Skeleton className="h-6 w-3/4 mb-4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-5/6" />
+        <div className="p-4 space-y-4 flex-grow">
+            <Skeleton className="h-10 w-full mb-4 rounded-md" /> {/* Tabs Skeleton */}
+            <Card>
+              <CardHeader>
+                 <Skeleton className="h-6 w-1/3 mb-2 rounded-md"/>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-4 w-full rounded-md"/>
+                <Skeleton className="h-4 w-full rounded-md"/>
+                <Skeleton className="h-4 w-5/6 rounded-md"/>
+                <Skeleton className="h-4 w-full rounded-md"/>
+                <Skeleton className="h-4 w-4/6 rounded-md"/>
+              </CardContent>
+            </Card>
         </div>
+         <footer className="p-4 mt-auto text-center">
+           <Skeleton className="h-4 w-1/2 mx-auto rounded-md"/>
+         </footer>
       </div>
     );
   }
 
   if (!topicData) {
     return (
-        <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center gap-6 min-h-screen">
-            <h1 className="text-2xl font-bold">Topic Not Found</h1>
-            <p className="text-muted-foreground">The requested topic could not be found.</p>
+        <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center gap-6 min-h-screen text-center">
+            <h1 className="text-2xl font-bold text-destructive">Topic Not Found</h1>
+            <p className="text-muted-foreground">The topic you requested ({topicId}) could not be found.</p>
              <Link href="/" passHref>
                 <Button variant="outline">
                      <ArrowLeft className="mr-2 h-4 w-4" /> Go Back Home
