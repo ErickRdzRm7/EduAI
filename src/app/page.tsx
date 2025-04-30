@@ -6,15 +6,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEffect, useState, type ReactNode } from "react";
 import { authProviders } from '@/config/auth';
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Code, Calculator, FlaskConical, Brain } from "lucide-react"; // Import correct icon
+import { Search, Code, Calculator, FlaskConical, Brain, Plus } from "lucide-react"; // Import Plus icon
 
 // Helper function to get icon based on topic
 const getTopicIcon = (topic: string): ReactNode => {
   const lowerTopic = topic.toLowerCase();
-  if (lowerTopic.includes('java') || lowerTopic.includes('programming')) {
+  if (lowerTopic.includes('java') || lowerTopic.includes('programming') || lowerTopic.includes('development')) {
     return <Code className="h-6 w-6 text-accent mr-2" />;
   }
-  if (lowerTopic.includes('mathematics') || lowerTopic.includes('math')) {
+  if (lowerTopic.includes('mathematics') || lowerTopic.includes('math') || lowerTopic.includes('algebra')) {
     return <Calculator className="h-6 w-6 text-accent mr-2" />;
   }
   if (lowerTopic.includes('chemistry')) {
@@ -70,6 +70,11 @@ export default function Home() {
     }, 1500); // Increased loading time for skeleton visibility
   }, []);
 
+  const handleRequestTopic = () => {
+    // Placeholder for future implementation (e.g., open a modal or navigate to a form)
+    alert('Request New Topic functionality coming soon!');
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen"> {/* Added min-h-screen */}
       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border"> {/* Added header-border class */}
@@ -99,14 +104,20 @@ export default function Home() {
       </header>
 
       <section className="p-4 flex-grow"> {/* Added flex-grow */}
-        <div className="mb-6 relative"> {/* Increased margin bottom and added relative positioning */}
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent"/> {/* Positioned icon inside */}
-          <input
-            type="search"
-            placeholder="Search topics..."
-            className="search-input flex-1 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:border-accent" // Added focus:border-accent
-          />
+        <div className="mb-6 flex items-center gap-4"> {/* Increased margin bottom and added flex container */}
+          <div className="relative flex-grow"> {/* Added relative positioning and flex-grow */}
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent"/> {/* Positioned icon inside */}
+            <input
+              type="search"
+              placeholder="Search topics..."
+              className="search-input flex-1 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:border-accent" // Added focus:border-accent
+            />
+          </div>
+          <Button onClick={handleRequestTopic} variant="outline">
+            <Plus className="mr-2 h-4 w-4" /> Request New Topic
+          </Button>
         </div>
+
 
         <h2 className="text-xl font-semibold mb-4">Explore Topics</h2> {/* Increased margin bottom */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"> {/* Increased gap */}
