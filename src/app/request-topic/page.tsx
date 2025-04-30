@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +27,16 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react'; // Import useEffect and useState
+import { useRouter } from 'next/navigation'; // Import useRouter
+
+// Helper function to create slugs (consistent with home page)
+const createSlug = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/ /g, '-') // Replace spaces with hyphens
+      .replace(/[^\w-]+/g, ''); // Remove all non-word chars
+};
+
 
 const formSchema = z.object({
   topicName: z.string().min(2, {
@@ -39,6 +50,7 @@ const formSchema = z.object({
 
 export default function RequestTopicPage() {
   const { toast } = useToast();
+  const router = useRouter(); // Initialize router
   const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark
 
    // Theme loading effect
@@ -80,17 +92,30 @@ export default function RequestTopicPage() {
     },
   });
 
-  // Placeholder submit handler
+  // Updated submit handler
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values); // Log the form data
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: 'Topic Request Submitted',
-        description: `Thank you for suggesting "${values.topicName}"! We'll review your request.`,
-      });
-      form.reset(); // Reset form after submission
-    }, 500);
+    console.log("Submitting topic request:", values); // Log the form data
+
+    // 1. Generate the slug for the new topic
+    const slug = createSlug(values.topicName);
+
+    // 2. Simulate topic creation (In a real app, this would be an API call)
+    // NOTE: This simulation doesn't actually add to MOCK_TOPICS in [topicId]/page.tsx
+    //       So the user will land on the "Topic Not Found" page for the new slug.
+    //       This demonstrates the redirect flow as requested.
+    console.log(`Simulating creation of topic with slug: ${slug}`);
+
+    // 3. Show toast notification
+    toast({
+      title: 'Topic Request Submitted',
+      description: `"${values.topicName}" submitted. Redirecting to topic page...`,
+    });
+
+    // 4. Redirect the user to the newly "created" topic page
+    router.push(`/topics/${slug}`);
+
+    // Reset form - might happen too fast before redirect, consider removing or delaying if needed
+    // form.reset();
   }
 
   const toggleTheme = () => {
