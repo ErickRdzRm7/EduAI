@@ -14,7 +14,28 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation'; // Import useRouter
 
-// Simple SVG for Microsoft logo (replace with a better one if available)
+// Simple SVG for EduAI logo (Book + Brain/Chip)
+const EduAILogo = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4 text-primary">
+    {/* Book */}
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 1 4 14.5V4.5A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Simplified Brain/Chip */}
+    <path d="M12 11V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M10 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M9 7h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 13v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M10 15h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Optional connections */}
+    <path d="M9.5 7L8 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M14.5 7L16 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M8 13l1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M16 13l-1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+  </svg>
+);
+
+
+// Simple SVG for Microsoft logo
 const MicrosoftLogo = () => (
   <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M10 10H0V0H10V10Z" fill="#F25022"/>
@@ -24,7 +45,7 @@ const MicrosoftLogo = () => (
   </svg>
 );
 
-// Simple SVG for Google logo (replace with a better one if available)
+// Simple SVG for Google logo
 const GoogleLogo = () => (
     <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
         <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
@@ -56,19 +77,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
-       {/* Back button is removed as this is the entry point when not logged in */}
-       {/*
-       <Link href="/" passHref className="absolute top-4 left-4">
-          <Button variant="outline" size="icon" aria-label="Go back home">
-              <ArrowLeft className="h-4 w-4" />
-          </Button>
-       </Link>
-       */}
       <Card className="w-full max-w-sm mx-4">
         <CardHeader className="text-center">
+          <EduAILogo /> {/* Add the logo here */}
           <CardTitle className="text-2xl font-bold">Sign In to EduAI</CardTitle>
           <CardDescription>
-            Choose your preferred provider to continue
+            Welcome! Choose your preferred provider to continue learning. {/* Updated welcome message */}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
