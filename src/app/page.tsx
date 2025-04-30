@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -50,6 +49,15 @@ const getTopicIcon = (topic: string): ReactNode => {
   return <Brain className="h-6 w-6 text-accent mr-2" />; // Default icon
 };
 
+// Helper function to create slugs
+const createSlug = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/ /g, '-') // Replace spaces with hyphens
+      .replace(/[^\w-]+/g, ''); // Remove all non-word chars
+};
+
+
 const TopicCard = ({
   topic,
   level,
@@ -58,20 +66,25 @@ const TopicCard = ({
   topic: string;
   level: string;
   description: string;
-}) => (
-  <Card className="card">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
-      <div className="flex items-center">
-        {getTopicIcon(topic)}
-        <CardTitle className="topic-card-title">{topic}</CardTitle>
-      </div>
-      <span className="level-badge">{level}</span>
-    </CardHeader>
-    <CardContent className="px-4 pb-4 pt-2">
-      <p className="topic-card-description">{description}</p>
-    </CardContent>
-  </Card>
-);
+}) => {
+  const slug = createSlug(topic);
+  return (
+    <Link href={`/topics/${slug}`} passHref>
+        <Card className="card transition-all hover:scale-105 hover:shadow-lg"> {/* Applied hover effect */}
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
+        <div className="flex items-center">
+            {getTopicIcon(topic)}
+            <CardTitle className="topic-card-title">{topic}</CardTitle>
+        </div>
+        <span className="level-badge">{level}</span>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-2">
+        <p className="topic-card-description">{description}</p>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+};
 
 const TopicCardSkeleton = () => (
   <Card className="animate-pulse shadow-md rounded-lg">
@@ -163,8 +176,20 @@ export default function Home() {
   }, [authLoading, user]);
 
   const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
-  };
+    setTheme((prevTheme) => {
+        const newTheme = prevTheme === 'light' ? 'dark' : 'light';
+        if (typeof window !== 'undefined') {
+         if (newTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+         localStorage.setItem('theme', newTheme); // Ensure localStorage is updated immediately
+        }
+        return newTheme;
+    });
+};
+
 
   const handleSignOut = () => {
     try {
@@ -194,8 +219,10 @@ export default function Home() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-      <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
-        <h1 className="text-2xl font-bold">EduAI</h1>
+       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
+        <Link href="/" passHref>
+          <h1 className="text-2xl font-bold cursor-pointer">EduAI</h1>
+        </Link>
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -229,7 +256,7 @@ export default function Home() {
           </div>
         </div>
       </header>
-      <section className="p-4 flex-grow">
+       <section className="p-4 flex-grow">
         <div className="mb-6 flex items-center gap-4">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent" />
@@ -297,11 +324,11 @@ export default function Home() {
           </div>
         )}
       </section>
-      <footer className="p-4 mt-auto">
-        <p className="footer-text text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} EduAI. All rights reserved.
-        </p>
-      </footer>
+       <footer className="p-4 mt-auto">
+         <p className="footer-text text-center text-sm text-muted-foreground">
+           © {new Date().getFullYear()} EduAI. All rights reserved.
+         </p>
+       </footer>
     </div>
   );
 }
