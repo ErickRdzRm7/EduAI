@@ -33,9 +33,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import EditTopicDialog from '@/components/edit-topic-dialog'; // Import the new dialog
 
 
 // --- Topic Data Management ---
+
+interface TopicSummary { // Define TopicSummary for clarity
+  id: string;
+  title: string;
+  level: string;
+  description: string;
+}
 
 interface TopicDetail {
   id: string;
@@ -50,6 +58,7 @@ const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
   'java-programming': {
     id: 'java-programming',
     title: 'Java Programming',
+    description: 'Learn the fundamentals of Java syntax, object-oriented programming, and core libraries.',
     content: {
       Beginner: [/* ... content ... */ 'Introduction to Java: What is Java? History, Features.', 'Setting up the Environment: JDK Installation, IDE Setup (IntelliJ, Eclipse).', 'Basic Syntax: Variables, Data Types, Operators.', 'Control Flow: If-else statements, Loops (for, while).', 'First Java Program: Hello World!',],
       Intermediate: [/* ... content ... */'Object-Oriented Programming (OOP): Classes, Objects, Inheritance, Polymorphism, Encapsulation.', 'Methods: Defining and Calling Methods.', 'Arrays and Collections: ArrayList, HashMap.', 'Exception Handling: Try-catch blocks.',],
@@ -59,6 +68,7 @@ const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
   'intermediate-mathematics': {
     id: 'intermediate-mathematics',
     title: 'Intermediate Mathematics',
+    description: 'Explore calculus concepts like limits, derivatives, integrals, and their applications.',
     content: {
       Beginner: [ /* ... content ... */ 'Review of Algebra: Equations, Inequalities.', 'Functions: Domain, Range, Types of Functions.', 'Introduction to Limits.',],
       Intermediate: [ /* ... content ... */ 'Derivatives: Definition, Rules (Power, Product, Quotient, Chain).', 'Applications of Derivatives: Rate of Change, Optimization.', 'Integrals: Definite and Indefinite Integrals, Fundamental Theorem of Calculus.', 'Techniques of Integration.', ],
@@ -68,6 +78,7 @@ const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
   'organic-chemistry-principles': {
      id: 'organic-chemistry-principles',
      title: 'Organic Chemistry Principles',
+     description: 'Delve into the structure, properties, reactions, and synthesis of organic compounds.',
      content: {
          Beginner: [ /* ... content ... */ 'Introduction to Organic Chemistry: Bonding, Lewis Structures.', 'Functional Groups: Alkanes, Alkenes, Alkynes, Alcohols, Ethers.', 'Nomenclature: IUPAC Naming.', ],
          Intermediate: [ /* ... content ... */ 'Stereochemistry: Chirality, Enantiomers, Diastereomers.', 'Reaction Mechanisms: SN1, SN2, E1, E2 Reactions.', 'Spectroscopy Basics: IR, NMR.',],
@@ -77,6 +88,7 @@ const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
     'data-structures': {
     id: 'data-structures',
     title: 'Data Structures',
+    description: 'Understand arrays, linked lists, stacks, queues, trees, and graphs.',
     content: {
       Beginner: [ /* ... content ... */ 'Introduction: What are Data Structures? Why are they important?', 'Arrays: Definition, Operations, Time Complexity.', 'Linked Lists: Singly Linked Lists, Doubly Linked Lists.',],
       Intermediate: [ /* ... content ... */ 'Stacks: LIFO Principle, Operations (Push, Pop).', 'Queues: FIFO Principle, Operations (Enqueue, Dequeue).', 'Trees: Binary Trees, Binary Search Trees (BST).', 'Tree Traversal: Inorder, Preorder, Postorder.',],
@@ -86,6 +98,7 @@ const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
    'linear-algebra': {
     id: 'linear-algebra',
     title: 'Linear Algebra',
+    description: 'Introduction to vectors, matrices, systems of linear equations, and eigenvalues.',
     content: {
       Beginner: [ /* ... content ... */ 'Introduction to Vectors: Geometric Interpretation, Operations.', 'Matrices: Definition, Types, Operations (Addition, Multiplication).', 'Systems of Linear Equations: Gaussian Elimination.',],
       Intermediate: [ /* ... content ... */ 'Vector Spaces and Subspaces.', 'Linear Independence, Basis, Dimension.', 'Determinants: Properties and Calculation.', ],
@@ -95,6 +108,7 @@ const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
    'web-development-basics': {
     id: 'web-development-basics',
     title: 'Web Development Basics',
+    description: 'Learn HTML, CSS, and JavaScript fundamentals for building web pages.',
     content: {
       Beginner: [ /* ... content ... */ 'Introduction to the Web: How Websites Work.', 'HTML Fundamentals: Tags, Elements, Attributes, Structure.', 'Basic HTML Elements: Headings, Paragraphs, Lists, Links, Images.', 'Introduction to CSS: Selectors, Properties, Values.',],
       Intermediate: [ /* ... content ... */ 'CSS Box Model: Margin, Border, Padding, Content.', 'CSS Layouts: Flexbox basics, Grid basics.', 'Styling Text and Fonts.', 'Introduction to JavaScript: Variables, Data Types, Operators.',],
@@ -137,7 +151,7 @@ const saveTopicDetailsToStorage = (details: Record<string, TopicDetail>) => {
 };
 
 // Function to save the summary topic list to localStorage
-const saveTopicsSummaryToStorage = (topics: { id: string; title: string; level: string; description: string }[]) => {
+const saveTopicsSummaryToStorage = (topics: TopicSummary[]) => {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(topics));
@@ -150,7 +164,7 @@ const saveTopicsSummaryToStorage = (topics: { id: string; title: string; level: 
 };
 
 // Function to get the summary topic list from localStorage
-const getTopicsSummaryFromStorage = (): { id: string; title: string; level: string; description: string }[] => {
+const getTopicsSummaryFromStorage = (): TopicSummary[] => {
    if (typeof window === 'undefined') return [];
    try {
      const stored = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
@@ -180,6 +194,7 @@ export default function TopicPage() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [showQuizConfirmation, setShowQuizConfirmation] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false); // State for edit dialog
   const [numQuestions, setNumQuestions] = useState(3);
 
   const loadTopicData = useCallback(() => {
@@ -309,14 +324,45 @@ export default function TopicPage() {
   }
 
   // --- Edit and Delete Handlers ---
-  const handleEditTopic = () => {
+  const handleOpenEditDialog = () => {
     if (!topicData) return;
-    console.log(`Editing topic: ${topicData.title} (ID: ${topicId})`);
-    toast({
-      title: 'Edit Topic',
-      description: `Edit functionality for "${topicData.title}" is coming soon!`,
-    });
+    setShowEditDialog(true);
   };
+
+  const handleSaveTopic = (updatedTitle: string, updatedDescription: string) => {
+     if (!topicData) return;
+     console.log(`Saving topic: ${updatedTitle} (ID: ${topicId})`);
+
+     // 1. Update detailed topic data in localStorage
+     const currentDetails = getTopicDetailsFromStorage();
+     if (currentDetails[topicId]) {
+        currentDetails[topicId] = {
+            ...currentDetails[topicId],
+            title: updatedTitle,
+            description: updatedDescription, // Assuming description is part of TopicDetail now
+        };
+        saveTopicDetailsToStorage(currentDetails);
+     }
+
+     // 2. Update summary topic list in localStorage
+     const currentSummary = getTopicsSummaryFromStorage();
+     const updatedSummary = currentSummary.map(topic =>
+       topic.id === topicId
+         ? { ...topic, title: updatedTitle, description: updatedDescription }
+         : topic
+     );
+     saveTopicsSummaryToStorage(updatedSummary); // This will trigger the storage event
+
+     // 3. Update local state
+     setTopicData(prevData => prevData ? { ...prevData, title: updatedTitle, description: updatedDescription } : null);
+
+     toast({
+       title: 'Topic Updated',
+       description: `"${updatedTitle}" has been updated successfully.`,
+     });
+     setShowEditDialog(false); // Close the dialog
+  };
+
 
   const handleDeleteTopic = () => {
     if (!topicData) return;
@@ -418,7 +464,7 @@ export default function TopicPage() {
           <h1 className="text-2xl font-bold">{topicData.title}</h1>
         </div>
          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={handleEditTopic} aria-label="Edit topic">
+            <Button variant="ghost" size="icon" onClick={handleOpenEditDialog} aria-label="Edit topic">
               <Pencil className="h-5 w-5" />
             </Button>
             <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
@@ -505,6 +551,18 @@ export default function TopicPage() {
             level={validSelectedLevel} // Pass the validated level
           />
       )}
+
+      {/* Edit Topic Dialog */}
+      {topicData && (
+        <EditTopicDialog
+          isOpen={showEditDialog}
+          onClose={() => setShowEditDialog(false)}
+          topicTitle={topicData.title}
+          topicDescription={topicData.description ?? ''} // Pass current description
+          onSave={handleSaveTopic}
+        />
+      )}
+
 
        {/* Quiz Confirmation Dialog */}
         {topicData && ( // Only render if topicData exists
