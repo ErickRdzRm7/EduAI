@@ -11,8 +11,6 @@ import {
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useEffect, useState, type ReactNode } from 'react';
-// Remove authProviders import as login is handled on a separate page
-// import { authProviders } from '@/config/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Search,
@@ -24,6 +22,7 @@ import {
   Moon,
   Sun,
   LogOut, // Import LogOut icon
+  User as UserIcon, // Import User icon
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation'; // Import useRouter
@@ -61,11 +60,7 @@ const TopicCard = ({
   description: string;
 }) => (
   <Card className="card">
-    {' '}
-    {/* Use the .card class from globals.css */}
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
-      {' '}
-      {/* Adjusted padding */}
       <div className="flex items-center">
         {getTopicIcon(topic)}
         <CardTitle className="topic-card-title">{topic}</CardTitle>
@@ -73,8 +68,6 @@ const TopicCard = ({
       <span className="level-badge">{level}</span>
     </CardHeader>
     <CardContent className="px-4 pb-4 pt-2">
-      {' '}
-      {/* Adjusted padding */}
       <p className="topic-card-description">{description}</p>
     </CardContent>
   </Card>
@@ -84,11 +77,10 @@ const TopicCardSkeleton = () => (
   <Card className="animate-pulse shadow-md rounded-lg">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
       <div className="flex items-center">
-        <Skeleton className="h-6 w-6 mr-2 rounded-full" />{' '}
-        {/* Icon placeholder */}
-        <Skeleton className="h-6 w-32" /> {/* Title placeholder */}
+        <Skeleton className="h-6 w-6 mr-2 rounded-full" />
+        <Skeleton className="h-6 w-32" />
       </div>
-      <Skeleton className="h-5 w-20 rounded-md" /> {/* Level badge placeholder */}
+      <Skeleton className="h-5 w-20 rounded-md" />
     </CardHeader>
     <CardContent className="px-4 pb-4 pt-2 space-y-2">
       <Skeleton className="h-4 w-full" />
@@ -105,11 +97,11 @@ interface User {
 }
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null); // Use User interface
-  const [authLoading, setAuthLoading] = useState(true); // Renamed loading to authLoading
-  const [topicsLoading, setTopicsLoading] = useState(true); // Separate loading for topics
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark
-  const router = useRouter(); // Initialize router
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const router = useRouter();
 
   // Authentication check effect
   useEffect(() => {
@@ -117,21 +109,20 @@ export default function Home() {
       try {
         const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
         if (!isAuthenticated) {
-          router.push('/login'); // Redirect to login if not authenticated
+          router.push('/login');
         } else {
-          // Simulate fetching user data after authentication is confirmed
-          setUser({ name: 'User' }); // Basic user, replace with actual data fetch later
+          // Simulate fetching user data
+          setUser({ name: 'User', email: 'user@example.com' }); // Basic user with email
         }
       } catch (error) {
-         // Handle potential localStorage access errors (e.g., in private browsing)
         console.error("Error accessing localStorage:", error);
-        router.push('/login'); // Redirect to login on error
+        router.push('/login');
       } finally {
-        setAuthLoading(false); // Stop authentication loading
+        setAuthLoading(false);
       }
     };
     checkAuth();
-  }, [router]); // Add router to dependency array
+  }, [router]);
 
   // Theme loading effect
   useEffect(() => {
@@ -164,13 +155,12 @@ export default function Home() {
 
   // Topic loading simulation effect
   useEffect(() => {
-    // Simulate loading topics data only if authenticated
     if (!authLoading && user) {
       setTimeout(() => {
         setTopicsLoading(false);
-      }, 1000); // Shorter delay for topics after auth is done
+      }, 1000);
     }
-  }, [authLoading, user]); // Depend on authLoading and user status
+  }, [authLoading, user]);
 
   const toggleTheme = () => {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
@@ -178,26 +168,22 @@ export default function Home() {
 
   const handleSignOut = () => {
     try {
-      localStorage.removeItem('isAuthenticated'); // Clear auth flag
+      localStorage.removeItem('isAuthenticated');
     } catch (error) {
         console.error("Error accessing localStorage:", error);
     }
-    setUser(null); // Clear user state
-    router.push('/login'); // Redirect to login
+    setUser(null);
+    router.push('/login');
   };
 
-  // Show full page loading indicator while checking authentication
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Skeleton className="h-12 w-12 rounded-full" />
-        {/* Or a more elaborate loading screen */}
       </div>
     );
   }
 
-  // If not authenticated after loading, this part shouldn't be reached due to redirect,
-  // but as a fallback:
   if (!user) {
      return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -206,20 +192,11 @@ export default function Home() {
      );
   }
 
-
-  // Render main content only if authenticated
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-      {' '}
-      {/* Added min-h-screen */}
       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
-        {' '}
-        {/* Added header-border class */}
-        <h1 className="text-2xl font-bold">EduAI</h1>{' '}
-        {/* Consider replacing with a logo */}
+        <h1 className="text-2xl font-bold">EduAI</h1>
         <div className="flex items-center gap-4">
-          {' '}
-          {/* Wrapper for theme toggle and user info */}
           <Button
             variant="ghost"
             size="icon"
@@ -234,13 +211,18 @@ export default function Home() {
           </Button>
           {/* User info and Sign Out Button */}
           <div className="flex items-center gap-2">
-             <Avatar>
+            <Link href="/profile" passHref>
+             <Avatar className="cursor-pointer">
                <AvatarImage src={user.imageUrl} alt={user.name} />
                <AvatarFallback>
-                 {user.name ? user.name[0].toUpperCase() : 'U'}
+                 {/* Use UserIcon if name is 'User' or no name */}
+                 {user.name && user.name !== 'User' ? user.name[0].toUpperCase() : <UserIcon className="h-5 w-5" />}
                </AvatarFallback>
              </Avatar>
-             <span>{user.name}</span>
+            </Link>
+            <Link href="/profile" passHref>
+             <span className="cursor-pointer hover:underline">{user.name}</span>
+            </Link>
              <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
                <LogOut className="h-5 w-5" />
              </Button>
@@ -248,16 +230,9 @@ export default function Home() {
         </div>
       </header>
       <section className="p-4 flex-grow">
-        {' '}
-        {/* Added flex-grow */}
         <div className="mb-6 flex items-center gap-4">
-          {' '}
-          {/* Increased margin bottom and added flex container */}
           <div className="relative flex-grow">
-            {' '}
-            {/* Added relative positioning and flex-grow */}
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent" />{' '}
-            {/* Positioned icon inside */}
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent" />
             <input
               type="search"
               placeholder="Search topics..."
@@ -270,11 +245,8 @@ export default function Home() {
             </Button>
           </Link>
         </div>
-        <h2 className="text-xl font-semibold mb-4">Explore Topics</h2>{' '}
-        {/* Increased margin bottom */}
+        <h2 className="text-xl font-semibold mb-4">Explore Topics</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {' '}
-          {/* Increased gap */}
           {topicsLoading ? (
             <>
               <TopicCardSkeleton />
@@ -319,23 +291,15 @@ export default function Home() {
             </>
           )}
         </div>
-        {/* Placeholder for empty state or no results */}
         {!topicsLoading && (
-          <div className="empty-state-message mt-8 text-center text-muted-foreground">
-            {' '}
-            {/* Use class directly */}
-            {/* Add message like "No topics found." or "Start exploring!" */}
+          <div className="mt-8 text-center text-muted-foreground">
             Start exploring topics or use the search bar!
           </div>
         )}
       </section>
       <footer className="p-4 mt-auto">
-        {' '}
-        {/* Added mt-auto to push footer down */}
         <p className="footer-text text-center text-sm text-muted-foreground">
-          {' '}
-          {/* Use classes directly */}©{' '}
-          {new Date().getFullYear()} EduAI. All rights reserved.
+          © {new Date().getFullYear()} EduAI. All rights reserved.
         </p>
       </footer>
     </div>
