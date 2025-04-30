@@ -57,6 +57,26 @@ const createSlug = (text: string): string => {
       .replace(/[^\w-]+/g, ''); // Remove all non-word chars
 };
 
+// Simple SVG for EduAI logo (Book + Brain/Chip)
+const EduAILogo = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
+    {/* Book */}
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 1 4 14.5V4.5A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Simplified Brain/Chip */}
+    <path d="M12 11V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M10 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M9 7h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 13v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M10 15h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Optional connections */}
+    <path d="M9.5 7L8 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M14.5 7L16 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M8 13l1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M16 13l-1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+  </svg>
+);
+
 
 const TopicCard = ({
   topic,
@@ -70,7 +90,7 @@ const TopicCard = ({
   const slug = createSlug(topic);
   return (
     <Link href={`/topics/${slug}`} passHref>
-        <Card className="card transition-all hover:shadow-lg hover:scale-105"> {/* Applied hover effect */}
+        <Card className="card transition-all hover:scale-103 hover:shadow-lg"> {/* Applied hover effect */}
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
         <div className="flex items-center">
             {getTopicIcon(topic)}
@@ -224,7 +244,10 @@ export default function Home() {
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
        <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
         <Link href="/" passHref>
-          <h1 className="text-2xl font-bold cursor-pointer">EduAI</h1>
+          <div className="flex items-center gap-2 cursor-pointer">
+            <EduAILogo />
+            <h1 className="text-2xl font-bold hidden sm:block">EduAI</h1> {/* Show text on larger screens */}
+          </div>
         </Link>
         <div className="flex items-center gap-4">
           <Button
@@ -251,7 +274,7 @@ export default function Home() {
              </Avatar>
             </Link>
             <Link href="/profile" passHref>
-             <span className="cursor-pointer hover:underline">{user.name}</span>
+             <span className="cursor-pointer hover:underline hidden sm:block">{user.name}</span> {/* Hide name on small screens if needed */}
             </Link>
              <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
                <LogOut className="h-5 w-5" />
@@ -260,17 +283,17 @@ export default function Home() {
         </div>
       </header>
        <section className="p-4 flex-grow">
-        <div className="mb-6 flex items-center gap-4">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent" />
+        <div className="search-container mb-6 flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative flex-grow w-full">
+            <Search className="search-icon absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent" />
             <input
               type="search"
               placeholder="Search topics..."
               className="search-input flex-1 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:border-accent" // Added focus:border-accent
             />
           </div>
-          <Link href="/request-topic" passHref>
-            <Button variant="outline">
+          <Link href="/request-topic" passHref className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full">
               <Plus className="mr-2 h-4 w-4" /> Request New Topic
             </Button>
           </Link>
@@ -322,7 +345,7 @@ export default function Home() {
           )}
         </div>
         {!topicsLoading && (
-          <div className="mt-8 text-center text-muted-foreground">
+          <div className="empty-state-message mt-8 text-center text-muted-foreground">
             Start exploring topics or use the search bar!
           </div>
         )}
