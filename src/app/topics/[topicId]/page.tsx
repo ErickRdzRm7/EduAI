@@ -209,12 +209,17 @@ export default function TopicPage() {
 };
 
   const handleTakeQuiz = () => {
-    // Placeholder action - show a toast message
+    // Placeholder action - show a toast message and log the intent
+    const quizTitle = topicData?.title || 'this topic';
+    const quizLevel = selectedLevel;
+    console.log(`User initiated quiz for ${quizTitle} - ${quizLevel} level.`);
     toast({
       title: 'Quiz Feature Coming Soon!',
-      description: `A quiz for ${topicData?.title} (${selectedLevel}) will be available soon.`,
+      description: `A quiz for ${quizTitle} (${quizLevel}) will be available soon. Check back later!`,
+      variant: "default", // Optional: ensures default toast styling
     });
-    console.log(`Take quiz for ${topicData?.title} - ${selectedLevel}`);
+    // Future implementation: Navigate to quiz page or open quiz modal
+    // Example: router.push(`/topics/${topicId}/quiz?level=${selectedLevel}`);
   };
 
 
@@ -372,4 +377,3 @@ export default function TopicPage() {
     </div>
   );
 }
-
