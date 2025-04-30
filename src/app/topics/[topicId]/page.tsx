@@ -2,17 +2,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation'; // Import useRouter
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MessageCircle, Moon, Sun, ClipboardCheck, Loader2 } from 'lucide-react'; // Added Loader2
+import { ArrowLeft, MessageCircle, Moon, Sun, ClipboardCheck, Loader2, Pencil, Trash2 } from 'lucide-react'; // Added Pencil, Trash2
 import Link from 'next/link';
 import AiTutor from '@/components/ai-tutor';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Import CardFooter
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { generateQuiz, type GenerateQuizInput, type GenerateQuizOutput, type QuizQuestion } from '@/ai/flows/generate-quiz-flow'; // Import quiz flow
-import QuizDisplay from '@/components/quiz-display'; // Import the quiz display component
+import { generateQuiz, type GenerateQuizInput, type GenerateQuizOutput, type QuizQuestion } from '@/ai/flows/generate-quiz-flow';
+import QuizDisplay from '@/components/quiz-display';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +22,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  AlertDialogTrigger, // Import AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 // Mock data - replace with actual data fetching
-const MOCK_TOPICS: Record<string, { title: string; content: Record<string, string[]> }> = {
+// Make MOCK_TOPICS mutable for deletion simulation
+let MOCK_TOPICS: Record<string, { title: string; content: Record<string, string[]> }> = {
   'java-programming': {
     title: 'Java Programming',
     content: {
@@ -167,6 +177,7 @@ const MOCK_TOPICS: Record<string, { title: string; content: Record<string, strin
 
 export default function TopicPage() {
   const params = useParams();
+  const router = useRouter(); // Initialize router
   const topicId = params.topicId as string; // Get topic ID from URL
   const [topicData, setTopicData] = useState<{ title: string; content: Record<string, string[]> } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,6 +189,7 @@ export default function TopicPage() {
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showQuizConfirmation, setShowQuizConfirmation] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false); // State for delete confirmation
   const [numQuestions, setNumQuestions] = useState(3); // Default number of questions
 
   useEffect(() => {
@@ -196,9 +208,13 @@ export default function TopicPage() {
 
     // Simulate fetching topic data
     setTimeout(() => {
+      // Check if topic still exists in (potentially modified) MOCK_TOPICS
       const data = MOCK_TOPICS[topicId];
       if (data) {
         setTopicData(data);
+      } else {
+        // If topic was deleted, topicData remains null
+        setTopicData(null);
       }
       setLoading(false);
     }, 500); // Simulate network delay
@@ -247,7 +263,18 @@ export default function TopicPage() {
             level: selectedLevel,
             numQuestions: numQuestions, // Use the selected number of questions
         };
-        const output: GenerateQuizOutput = await generateQuiz(input);
+        // Simulate API call delay for quiz generation
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        // In a real app, you'd call generateQuiz(input) here
+        // For simulation, generate dummy quiz data or use a static example if API key invalid
+        const output: GenerateQuizOutput = {
+          quiz: Array.from({ length: numQuestions }, (_, i) => ({
+            question: `Simulated Question ${i + 1} for ${topicData.title} (${selectedLevel})?`,
+            options: [`Option A${i}`, `Option B${i}`, `Option C${i}`, `Option D${i}`],
+            correctAnswer: `Option B${i}`, // Example correct answer
+          }))
+        };
+        // const output: GenerateQuizOutput = await generateQuiz(input); // Uncomment for actual API call
 
         if (output.quiz && output.quiz.length > 0) {
             setQuizQuestions(output.quiz);
@@ -262,11 +289,29 @@ export default function TopicPage() {
 
     } catch (error) {
         console.error('Error generating quiz:', error);
+         // Provide more specific feedback if it's an API key error
+        const errorMsg = error instanceof Error && error.message.includes('API key not valid')
+            ? 'Invalid or missing API key for quiz generation.'
+            : 'An error occurred while generating the quiz.';
+
         toast({
-            title: 'Error',
-            description: 'An error occurred while generating the quiz. Check console for details.',
+            title: 'Error Generating Quiz',
+            description: errorMsg + ' Displaying simulated quiz data instead.',
             variant: 'destructive',
         });
+
+         // Generate dummy quiz data as fallback
+        const fallbackOutput: GenerateQuizOutput = {
+          quiz: Array.from({ length: numQuestions }, (_, i) => ({
+            question: `Simulated Question ${i + 1} for ${topicData.title} (${selectedLevel})?`,
+            options: [`Option A${i}`, `Option B${i}`, `Option C${i}`, `Option D${i}`],
+            correctAnswer: `Option B${i}`, // Example correct answer
+          }))
+        };
+        setQuizQuestions(fallbackOutput.quiz);
+        setShowQuiz(true);
+
+
     } finally {
         setIsGeneratingQuiz(false);
     }
@@ -275,6 +320,36 @@ export default function TopicPage() {
   const handleOpenQuizConfirmation = () => {
       setShowQuizConfirmation(true);
   }
+
+  // --- Edit and Delete Handlers ---
+  const handleEditTopic = () => {
+    if (!topicData) return;
+    // Placeholder: In a real app, navigate to an edit page or open an edit modal
+    console.log(`Editing topic: ${topicData.title} (ID: ${topicId})`);
+    toast({
+      title: 'Edit Topic',
+      description: `Edit functionality for "${topicData.title}" is coming soon!`,
+    });
+    // Example: router.push(`/topics/${topicId}/edit`);
+  };
+
+  const handleDeleteTopic = () => {
+    if (!topicData) return;
+    console.log(`Deleting topic: ${topicData.title} (ID: ${topicId})`);
+
+    // Simulate deletion from MOCK_TOPICS (in a real app, this would be an API call)
+    delete MOCK_TOPICS[topicId];
+
+    toast({
+      title: 'Topic Deleted',
+      description: `"${topicData.title}" has been deleted.`,
+      variant: 'destructive' // Use destructive variant for delete confirmation
+    });
+
+    setShowDeleteConfirmation(false); // Close the dialog
+    router.push('/'); // Redirect to home page after deletion
+  };
+  // --- End Edit and Delete Handlers ---
 
 
   if (loading) {
@@ -286,9 +361,11 @@ export default function TopicPage() {
              <Skeleton className="h-8 w-8 rounded-md" />
              <Skeleton className="h-8 w-48 rounded-md" />
            </div>
-           <div className="flex items-center gap-4">
-             <Skeleton className="h-8 w-8 rounded-full" />
-             <Skeleton className="h-8 w-28 rounded-md" /> {/* Skeleton for Ask AI button */}
+           <div className="flex items-center gap-2"> {/* Reduced gap */}
+             <Skeleton className="h-8 w-8 rounded-md" /> {/* Edit Skeleton */}
+             <Skeleton className="h-8 w-8 rounded-md" /> {/* Delete Skeleton */}
+             <Skeleton className="h-8 w-8 rounded-full" /> {/* Theme Skeleton */}
+             <Skeleton className="h-8 w-28 rounded-md" /> {/* Ask AI Skeleton */}
            </div>
         </header>
         {/* Skeleton Content */}
@@ -321,7 +398,7 @@ export default function TopicPage() {
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center gap-6 min-h-screen text-center">
             <h1 className="text-2xl font-bold text-destructive">Topic Not Found</h1>
-            <p className="text-muted-foreground">The topic you requested ({topicId}) could not be found.</p>
+            <p className="text-muted-foreground">The topic you requested ({topicId}) may have been deleted or does not exist.</p>
              <Link href="/" passHref>
                 <Button variant="outline">
                      <ArrowLeft className="mr-2 h-4 w-4" /> Go Back Home
@@ -334,6 +411,7 @@ export default function TopicPage() {
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
+        {/* Left side: Back button and Title */}
         <div className="flex items-center gap-4">
           <Link href="/" passHref>
             <Button variant="outline" size="icon" aria-label="Go back home">
@@ -342,11 +420,45 @@ export default function TopicPage() {
           </Link>
           <h1 className="text-2xl font-bold">{topicData.title}</h1>
         </div>
-         <div className="flex items-center gap-4">
+
+        {/* Right side: Edit, Delete, Theme toggle, AI Tutor */}
+         <div className="flex items-center gap-2"> {/* Reduced gap between icons */}
+            {/* Edit Button */}
+            <Button variant="ghost" size="icon" onClick={handleEditTopic} aria-label="Edit topic">
+              <Pencil className="h-5 w-5" />
+            </Button>
+
+            {/* Delete Button with Confirmation Dialog */}
+            <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+              <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Delete topic" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the topic
+                    "{topicData.title}".
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteTopic} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete Topic
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+
+           {/* Theme Toggle Button */}
            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
            </Button>
-           {/* Reverted back to Ask AI Tutor button */}
+
+           {/* Ask AI Tutor Button */}
            <Button variant="outline" onClick={() => setShowAiTutor(true)}>
              <MessageCircle className="mr-2 h-4 w-4" /> Ask AI Tutor
            </Button>
@@ -514,13 +626,3 @@ export default function TopicPage() {
     </div>
   );
 }
-
-// Helper component imports - make sure these exist or remove if not used
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
