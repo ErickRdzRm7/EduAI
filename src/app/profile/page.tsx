@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Moon, Sun, User as UserIcon, Trash2 } from 'lucide-react'; // Added Trash2
+import { ArrowLeft, Moon, Sun, User as UserIcon, Trash2, Save, X } from 'lucide-react'; // Added Save, X icons
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
@@ -22,8 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; // Import AlertDialog components
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Import Tooltip
 
 
 // Mock user data structure - Ideally fetched from auth context/API
@@ -38,20 +39,34 @@ export default function ProfilePage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const router = useRouter();
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
+  // State for editing profile
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState(''); // Assuming email might be editable in future
 
   // Authentication and User Data Fetching
   useEffect(() => {
     const checkAuth = () => {
       try {
         const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+        const storedName = localStorage.getItem('userName') || 'User';
+        const storedEmail = localStorage.getItem('userEmail') || 'user@example.com';
+        const storedImageUrl = localStorage.getItem('userImageUrl') || undefined; // Retrieve image URL
+
         if (!isAuthenticated) {
           router.push('/login');
         } else {
-          // Simulate fetching user data - replace with actual fetch
-          setUser({ name: 'User', email: 'user@example.com', imageUrl: undefined });
+          const fetchedUser: User = {
+            name: storedName,
+            email: storedEmail,
+            imageUrl: storedImageUrl,
+          };
+          setUser(fetchedUser);
+          setEditName(fetchedUser.name); // Initialize edit state
+          setEditEmail(fetchedUser.email || '');
         }
       } catch (error) {
         console.error("Error accessing localStorage:", error);
@@ -97,11 +112,65 @@ export default function ProfilePage() {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
+  // --- Edit Profile Handlers ---
+  const handleEditToggle = () => {
+    if (!isEditing && user) {
+      // Entering edit mode, initialize edit fields with current user data
+      setEditName(user.name);
+      setEditEmail(user.email || '');
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSaveChanges = () => {
+    if (!user) return;
+
+    const updatedUser: User = {
+      ...user,
+      name: editName.trim() || user.name, // Use current name if editName is empty
+      email: editEmail.trim() || user.email, // Handle email update similarly (if editable)
+    };
+
+    try {
+      // Update localStorage
+      localStorage.setItem('userName', updatedUser.name);
+      // localStorage.setItem('userEmail', updatedUser.email || ''); // If email is editable
+
+      // Update component state
+      setUser(updatedUser);
+      setIsEditing(false); // Exit edit mode
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been saved.",
+      });
+    } catch (error) {
+      console.error("Error saving profile to localStorage:", error);
+      toast({
+        title: "Error Saving Profile",
+        description: "Could not save profile changes. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (user) {
+      // Reset edit fields to original user data
+      setEditName(user.name);
+      setEditEmail(user.email || '');
+    }
+    setIsEditing(false); // Exit edit mode
+  };
+  // --- End Edit Profile Handlers ---
+
   const handleDeleteAccount = () => {
     try {
       // Clear authentication status and any other sensitive user data
       localStorage.removeItem('isAuthenticated');
-      // Example: localStorage.removeItem('userName');
+      localStorage.removeItem('userName'); // Clear specific user data
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userImageUrl');
       // Example: localStorage.removeItem('userPreferences');
 
       toast({
@@ -176,93 +245,135 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-      <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/" passHref>
-            <Button variant="outline" size="icon" aria-label="Go back home">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Your Profile</h1>
-        </div>
-        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-          {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-        </Button>
-      </header>
+    <TooltipProvider> {/* Wrap with TooltipProvider */}
+      <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
+        <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link href="/" passHref>
+              <Button variant="outline" size="icon" aria-label="Go back home">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Your Profile</h1>
+          </div>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          </Button>
+        </header>
 
-      <section className="p-4 max-w-2xl mx-auto flex-grow w-full">
-        <Card>
-          <CardHeader className="items-center text-center">
-            <Avatar className="h-24 w-24 mb-4">
-              <AvatarImage src={user.imageUrl} alt={user.name} />
-              <AvatarFallback className="text-4xl">
-                 {user.name && user.name !== 'User' ? user.name[0].toUpperCase() : <UserIcon className="h-12 w-12" />}
-              </AvatarFallback>
-            </Avatar>
-            <CardTitle className="text-2xl">{user.name}</CardTitle>
-            <CardDescription>{user.email || 'No email provided'}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Separator />
+        <section className="p-4 max-w-2xl mx-auto flex-grow w-full">
+          <Card>
+            <CardHeader className="items-center text-center">
+              <Avatar className="h-24 w-24 mb-4">
+                <AvatarImage src={user.imageUrl} alt={user.name} />
+                <AvatarFallback className="text-4xl">
+                   {user.name && user.name !== 'User' ? user.name[0].toUpperCase() : <UserIcon className="h-12 w-12" />}
+                </AvatarFallback>
+              </Avatar>
+              <CardTitle className="text-2xl">{isEditing ? 'Editing Profile' : user.name}</CardTitle>
+              <CardDescription>{user.email || 'No email provided'}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Separator />
 
-            {/* Profile Information Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Profile Information</h3>
-              <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" defaultValue={user.name} disabled />
+              {/* Profile Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Profile Information</h3>
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={isEditing ? editName : user.name}
+                    onChange={(e) => isEditing && setEditName(e.target.value)}
+                    disabled={!isEditing}
+                    className={!isEditing ? "disabled:cursor-default disabled:opacity-100" : ""} // Keep visible when disabled
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={isEditing ? editEmail : user.email || ''}
+                    onChange={(e) => isEditing && setEditEmail(e.target.value)}
+                    disabled // Keep email disabled for now, even in edit mode
+                    className={"disabled:cursor-default disabled:opacity-100"} // Keep visible when disabled
+                    />
+                </div>
+                {/* Add more fields as needed, e.g., profile picture upload */}
+                <div className="flex gap-2">
+                    {!isEditing ? (
+                        <Button variant="outline" onClick={handleEditToggle}>Edit Profile</Button>
+                    ) : (
+                        <>
+                            <Button onClick={handleSaveChanges}>
+                                <Save className="mr-2 h-4 w-4" /> Save Changes
+                            </Button>
+                            <Button variant="outline" onClick={handleCancelEdit}>
+                                <X className="mr-2 h-4 w-4" /> Cancel
+                            </Button>
+                        </>
+                    )}
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue={user.email} disabled />
+
+              <Separator />
+
+              {/* Account Management Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Account Management</h3>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {/* Wrap disabled button with a span for tooltip to work */}
+                        <span tabIndex={0}>
+                            <Button variant="outline" disabled style={{ pointerEvents: 'none' }}>
+                                Change Password (N/A for Social Login)
+                            </Button>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Password changes are managed by your social provider (Google, Microsoft, etc.).</p>
+                    </TooltipContent>
+                </Tooltip>
+
+                {/* Add options for connected accounts if using multiple SSO */}
+
+                {/* Delete Account Button with Confirmation */}
+                 <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+                  <AlertDialogTrigger asChild>
+                      <Button variant="destructive">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                      </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete your account data
+                          stored in this browser. You will be logged out.
+                      </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                          onClick={handleDeleteAccount}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                          Delete Account
+                      </AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+                  </AlertDialog>
               </div>
-              {/* Add more fields as needed, e.g., profile picture upload */}
-              <Button variant="outline" disabled>Edit Profile (Coming Soon)</Button>
-            </div>
+            </CardContent>
+          </Card>
+        </section>
 
-            <Separator />
-
-            {/* Account Management Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Account Management</h3>
-              <Button variant="outline" disabled>Change Password (Coming Soon)</Button>
-              {/* Add options for connected accounts if using multiple SSO */}
-
-              {/* Delete Account Button with Confirmation */}
-               <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
-                <AlertDialogTrigger asChild>
-                    <Button variant="destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete Account
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your account data
-                        stored in this browser. You will be logged out.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={handleDeleteAccount}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                        Delete Account
-                    </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-                </AlertDialog>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <footer className="p-4 mt-auto text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} EduAI. All rights reserved.
-      </footer>
-    </div>
+        <footer className="p-4 mt-auto text-center text-sm text-muted-foreground">
+          © {new Date().getFullYear()} EduAI. All rights reserved.
+        </footer>
+      </div>
+    </TooltipProvider>
   );
 }
+
