@@ -7,6 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { authProviders } from '@/config/auth';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Code, Calculator, FlaskConical, Brain, Plus } from "lucide-react"; // Import Plus icon
+import Link from 'next/link'; // Import Link from next/link
 
 // Helper function to get icon based on topic
 const getTopicIcon = (topic: string): ReactNode => {
@@ -70,11 +71,6 @@ export default function Home() {
     }, 1500); // Increased loading time for skeleton visibility
   }, []);
 
-  const handleRequestTopic = () => {
-    // Placeholder for future implementation (e.g., open a modal or navigate to a form)
-    alert('Request New Topic functionality coming soon!');
-  };
-
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen"> {/* Added min-h-screen */}
       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border"> {/* Added header-border class */}
@@ -113,9 +109,11 @@ export default function Home() {
               className="search-input flex-1 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:border-accent" // Added focus:border-accent
             />
           </div>
-          <Button onClick={handleRequestTopic} variant="outline">
-            <Plus className="mr-2 h-4 w-4" /> Request New Topic
-          </Button>
+          <Link href="/request-topic" passHref>
+            <Button variant="outline">
+              <Plus className="mr-2 h-4 w-4" /> Request New Topic
+            </Button>
+          </Link>
         </div>
 
 
