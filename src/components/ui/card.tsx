@@ -30,13 +30,13 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLHeadingElement, // Changed to HTMLHeadingElement for semantic correctness
+  React.HTMLAttributes<HTMLHeadingElement> // Changed to HTMLHeadingElement
 >(({ className, ...props }, ref) => (
-  <div
+  <h3 // Changed to h3 for better semantics within a card
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-xl font-semibold leading-none tracking-tight", // Adjusted size to xl for better hierarchy
       className
     )}
     {...props}
@@ -45,10 +45,10 @@ const CardTitle = React.forwardRef<
 CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement, // Changed to HTMLParagraphElement
+  React.HTMLAttributes<HTMLParagraphElement> // Changed to HTMLParagraphElement
 >(({ className, ...props }, ref) => (
-  <div
+  <p // Changed to p for semantics
     ref={ref}
     className={cn("text-sm text-muted-foreground", className)}
     {...props}
@@ -70,7 +70,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
+    className={cn("flex items-center p-6 pt-0", className)} // Default padding for footer
     {...props}
   />
 ))
@@ -78,4 +78,4 @@ CardFooter.displayName = "CardFooter"
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 
-    
+

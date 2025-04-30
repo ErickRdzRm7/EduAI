@@ -6,11 +6,11 @@ import { useParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MessageCircle, Moon, Sun, ClipboardCheck } from 'lucide-react'; // Added ClipboardCheck
+import { ArrowLeft, MessageCircle, Moon, Sun, ClipboardCheck } from 'lucide-react'; // Keep ClipboardCheck
 import Link from 'next/link';
-import AiTutor from '@/components/ai-tutor'; // Import the new AI Tutor component
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import AiTutor from '@/components/ai-tutor';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Import CardFooter
+import { useToast } from '@/hooks/use-toast';
 
 // Mock data - replace with actual data fetching
 const MOCK_TOPICS: Record<string, { title: string; content: Record<string, string[]> }> = {
@@ -229,8 +229,7 @@ export default function TopicPage() {
            </div>
            <div className="flex items-center gap-4">
              <Skeleton className="h-8 w-8 rounded-full" />
-             <Skeleton className="h-8 w-28 rounded-md" />
-             <Skeleton className="h-8 w-28 rounded-md" /> {/* Skeleton for Take Quiz button */}
+             <Skeleton className="h-8 w-28 rounded-md" /> {/* Skeleton for Ask AI button */}
            </div>
         </header>
         {/* Skeleton Content */}
@@ -247,6 +246,9 @@ export default function TopicPage() {
                 <Skeleton className="h-4 w-full rounded-md"/>
                 <Skeleton className="h-4 w-4/6 rounded-md"/>
               </CardContent>
+               <CardFooter>
+                 <Skeleton className="h-10 w-36 rounded-md"/> {/* Skeleton for Quiz button */}
+               </CardFooter>
             </Card>
         </div>
          <footer className="p-4 mt-auto text-center">
@@ -285,11 +287,7 @@ export default function TopicPage() {
            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
            </Button>
-           {/* Take Quiz Button */}
-            <Button variant="outline" onClick={handleTakeQuiz}>
-             <ClipboardCheck className="mr-2 h-4 w-4" /> Take a Quiz
-            </Button>
-           {/* Help Button to open AI Tutor */}
+           {/* Reverted back to Ask AI Tutor button */}
            <Button variant="outline" onClick={() => setShowAiTutor(true)}>
              <MessageCircle className="mr-2 h-4 w-4" /> Ask AI Tutor
            </Button>
@@ -314,6 +312,11 @@ export default function TopicPage() {
                 ))}
                 {/* Add more structured content like code blocks, images here */}
               </CardContent>
+              <CardFooter> {/* Added Footer for the Quiz button */}
+                <Button variant="outline" onClick={handleTakeQuiz}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" /> Take a Quiz
+                </Button>
+              </CardFooter>
             </Card>
           </TabsContent>
           <TabsContent value="Intermediate">
@@ -327,6 +330,11 @@ export default function TopicPage() {
                 ))}
                  {/* Add more structured content like code blocks, images here */}
               </CardContent>
+               <CardFooter> {/* Added Footer for the Quiz button */}
+                <Button variant="outline" onClick={handleTakeQuiz}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" /> Take a Quiz
+                </Button>
+              </CardFooter>
             </Card>
           </TabsContent>
           <TabsContent value="Advanced">
@@ -340,6 +348,11 @@ export default function TopicPage() {
                 ))}
                  {/* Add more structured content like code blocks, images here */}
               </CardContent>
+               <CardFooter> {/* Added Footer for the Quiz button */}
+                <Button variant="outline" onClick={handleTakeQuiz}>
+                  <ClipboardCheck className="mr-2 h-4 w-4" /> Take a Quiz
+                </Button>
+              </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
@@ -359,3 +372,4 @@ export default function TopicPage() {
     </div>
   );
 }
+
