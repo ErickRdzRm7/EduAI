@@ -7,11 +7,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Moon, Sun, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Moon, Sun, User as UserIcon, Trash2 } from 'lucide-react'; // Added Trash2
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"; // Import AlertDialog components
+import { useToast } from '@/hooks/use-toast'; // Import useToast
+
 
 // Mock user data structure - Ideally fetched from auth context/API
 interface User {
@@ -25,6 +38,9 @@ export default function ProfilePage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const router = useRouter();
+  const { toast } = useToast(); // Initialize toast
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+
 
   // Authentication and User Data Fetching
   useEffect(() => {
@@ -80,6 +96,37 @@ export default function ProfilePage() {
   const toggleTheme = () => {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
   };
+
+  const handleDeleteAccount = () => {
+    try {
+      // Clear authentication status and any other sensitive user data
+      localStorage.removeItem('isAuthenticated');
+      // Example: localStorage.removeItem('userName');
+      // Example: localStorage.removeItem('userPreferences');
+
+      toast({
+        title: "Account Deleted",
+        description: "Your account information has been removed.",
+        variant: "destructive",
+      });
+
+      // Redirect to login page after a short delay to allow toast to show
+      setTimeout(() => {
+        router.push('/login');
+      }, 1500);
+
+    } catch (error) {
+      console.error("Error removing items from localStorage:", error);
+      toast({
+        title: "Error Deleting Account",
+        description: "Could not remove account data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+        setShowDeleteConfirmation(false); // Close the dialog regardless of success/error
+    }
+  };
+
 
   if (authLoading || !user) {
     return (
@@ -181,7 +228,33 @@ export default function ProfilePage() {
               <h3 className="text-lg font-semibold">Account Management</h3>
               <Button variant="outline" disabled>Change Password (Coming Soon)</Button>
               {/* Add options for connected accounts if using multiple SSO */}
-              <Button variant="destructive" disabled>Delete Account (Coming Soon)</Button>
+
+              {/* Delete Account Button with Confirmation */}
+               <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
+                <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your account data
+                        stored in this browser. You will be logged out.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        onClick={handleDeleteAccount}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                        Delete Account
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+                </AlertDialog>
             </div>
           </CardContent>
         </Card>
