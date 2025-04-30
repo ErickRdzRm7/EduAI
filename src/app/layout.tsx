@@ -54,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* Add suppressHydrationWarning */}
+    <html lang="en" suppressHydrationWarning>
       <head>
          {/* Inject script to set initial theme before rendering */}
         <script dangerouslySetInnerHTML={{ __html: SetInitialTheme }} />
