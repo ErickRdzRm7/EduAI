@@ -411,7 +411,7 @@ export default function TopicPage() {
     return (
       <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
         {/* Skeleton Header */}
-        <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
+        <header className="flex items-center justify-between flex-wrap gap-4 p-4 bg-secondary rounded-md header-border">
            <div className="flex items-center gap-4">
              <Skeleton className="h-8 w-8 rounded-md" />
              <Skeleton className="h-8 w-48 rounded-md" />
@@ -468,23 +468,23 @@ export default function TopicPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-      <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
-        <div className="flex items-center gap-4">
+      <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link href="/" passHref>
             <Button variant="outline" size="icon" aria-label="Go back home">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">{topicData.title}</h1>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">{topicData.title}</h1>
         </div>
-         <div className="flex items-center gap-2">
+         <div className="flex items-center gap-1 sm:gap-2">
             <Button variant="ghost" size="icon" onClick={handleOpenEditDialog} aria-label="Edit topic">
-              <Pencil className="h-5 w-5" />
+              <Pencil className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
               <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Delete topic" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="h-5 w-5" />
+                    <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -504,10 +504,10 @@ export default function TopicPage() {
               </AlertDialogContent>
             </AlertDialog>
            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-             {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+             {theme === 'light' ? <Moon className="h-4 w-4 sm:h-5 sm:w-5" /> : <Sun className="h-4 w-4 sm:h-5 sm:w-5" />}
            </Button>
-           <Button variant="outline" onClick={() => setShowAiTutor(true)}>
-             <MessageCircle className="mr-2 h-4 w-4" /> Ask AI Tutor
+           <Button variant="outline" size="sm" onClick={() => setShowAiTutor(true)}>
+             <MessageCircle className="mr-1 h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" /> <span className="hidden sm:inline">Ask AI Tutor</span><span className="sm:hidden">AI</span>
            </Button>
          </div>
       </header>

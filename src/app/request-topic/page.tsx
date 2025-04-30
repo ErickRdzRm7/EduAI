@@ -225,14 +225,14 @@ export default function RequestTopicPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-       <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
-        <div className="flex items-center gap-4">
+       <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
+        <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/" passHref>
                 <Button variant="outline" size="icon" aria-label="Go back home">
                      <ArrowLeft className="h-4 w-4" />
                 </Button>
             </Link>
-            <h1 className="text-2xl font-bold">Request New Topic</h1>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Request New Topic</h1>
         </div>
         <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
           {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
