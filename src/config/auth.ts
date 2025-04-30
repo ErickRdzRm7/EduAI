@@ -3,16 +3,21 @@ export const authProviders = [
   {
     id: "google",
     name: "Google",
-    logo: "",
+    logo: "", // Placeholder for actual logo component/SVG
   },
   {
     id: "github",
     name: "GitHub",
-    logo: "",
+    logo: "", // Placeholder for actual logo component/SVG
   },
   {
     id: "microsoft",
     name: "Microsoft",
-    logo: "",
+    logo: "", // Placeholder for actual logo component/SVG
   },
+  {
+    id: "facebook",
+    name: "Facebook",
+    logo: "", // Placeholder for actual logo component/SVG
+  }
 ];
