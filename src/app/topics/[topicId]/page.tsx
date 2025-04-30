@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,10 +6,11 @@ import { useParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MessageCircle, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Moon, Sun, ClipboardCheck } from 'lucide-react'; // Added ClipboardCheck
 import Link from 'next/link';
 import AiTutor from '@/components/ai-tutor'; // Import the new AI Tutor component
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 // Mock data - replace with actual data fetching
 const MOCK_TOPICS: Record<string, { title: string; content: Record<string, string[]> }> = {
@@ -158,6 +160,7 @@ export default function TopicPage() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [showAiTutor, setShowAiTutor] = useState(false); // State to toggle AI tutor visibility
   const [selectedLevel, setSelectedLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner'); // Track selected level
+  const { toast } = useToast(); // Get toast function
 
   useEffect(() => {
     // Load theme from localStorage
@@ -205,6 +208,15 @@ export default function TopicPage() {
     });
 };
 
+  const handleTakeQuiz = () => {
+    // Placeholder action - show a toast message
+    toast({
+      title: 'Quiz Feature Coming Soon!',
+      description: `A quiz for ${topicData?.title} (${selectedLevel}) will be available soon.`,
+    });
+    console.log(`Take quiz for ${topicData?.title} - ${selectedLevel}`);
+  };
+
 
   if (loading) {
     return (
@@ -218,6 +230,7 @@ export default function TopicPage() {
            <div className="flex items-center gap-4">
              <Skeleton className="h-8 w-8 rounded-full" />
              <Skeleton className="h-8 w-28 rounded-md" />
+             <Skeleton className="h-8 w-28 rounded-md" /> {/* Skeleton for Take Quiz button */}
            </div>
         </header>
         {/* Skeleton Content */}
@@ -272,6 +285,10 @@ export default function TopicPage() {
            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
            </Button>
+           {/* Take Quiz Button */}
+            <Button variant="outline" onClick={handleTakeQuiz}>
+             <ClipboardCheck className="mr-2 h-4 w-4" /> Take a Quiz
+            </Button>
            {/* Help Button to open AI Tutor */}
            <Button variant="outline" onClick={() => setShowAiTutor(true)}>
              <MessageCircle className="mr-2 h-4 w-4" /> Ask AI Tutor
