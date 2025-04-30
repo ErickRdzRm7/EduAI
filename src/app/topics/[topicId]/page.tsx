@@ -4,7 +4,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation'; // Import useRouter
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, MessageCircle, Moon, Sun, ClipboardCheck, Loader2, Pencil, Trash2 } from 'lucide-react'; // Added Pencil, Trash2
@@ -41,14 +40,14 @@ import EditTopicDialog from '@/components/edit-topic-dialog'; // Import the new 
 interface TopicSummary { // Define TopicSummary for clarity
   id: string;
   title: string;
-  level: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory here
   description: string;
 }
 
 interface TopicDetail {
   id: string;
   title: string;
-  level?: string; // Level might be optional here if not always applicable
+  // Level is not stored here, it's derived from TopicSummary
   description?: string; // Description might be optional
   content: Record<string, string[]>; // Beginner, Intermediate, Advanced content
 }
@@ -184,9 +183,11 @@ export default function TopicPage() {
   const router = useRouter();
   const topicId = params.topicId as string;
   const [topicData, setTopicData] = useState<TopicDetail | null>(null);
+  const [topicLevel, setTopicLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced' | null>(null); // State for the topic's inherent level
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [showAiTutor, setShowAiTutor] = useState(false);
+  // selectedLevel is still useful for passing context to AI/Quiz, derived from topicLevel
   const [selectedLevel, setSelectedLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
   const { toast } = useToast();
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
@@ -203,7 +204,22 @@ export default function TopicPage() {
     setTimeout(() => {
       const allDetails = getTopicDetailsFromStorage();
       const data = allDetails[topicId];
-      setTopicData(data || null); // Set to null if topic doesn't exist
+      let level: 'Beginner' | 'Intermediate' | 'Advanced' | null = null;
+
+      if (data) {
+        // Get level from summary as detail doesn't store it
+        const summaries = getTopicsSummaryFromStorage();
+        const summary = summaries.find(s => s.id === topicId);
+        // Set level from summary, default to Beginner if somehow missing
+        level = summary?.level ?? 'Beginner';
+      }
+
+      setTopicData(data || null);
+      setTopicLevel(level); // Set the determined level
+      if (level) {
+        setSelectedLevel(level); // Keep selectedLevel sync'd for AI/Quiz
+      }
+
       setLoading(false);
     }, 500);
   }, [topicId]);
@@ -257,7 +273,7 @@ export default function TopicPage() {
 };
 
   const handleStartQuizGeneration = async () => {
-    if (!topicData) return;
+    if (!topicData || !topicLevel) return; // Need topicLevel too
     setShowQuizConfirmation(false);
     setIsGeneratingQuiz(true);
     setQuizQuestions([]);
@@ -265,7 +281,7 @@ export default function TopicPage() {
     try {
         const input: GenerateQuizInput = {
             topic: topicData.title,
-            level: selectedLevel,
+            level: topicLevel, // Use the inherent topic level for quiz generation
             numQuestions: numQuestions,
         };
         // Simulate API call delay
@@ -273,7 +289,7 @@ export default function TopicPage() {
         // Generate dummy quiz data if API key is invalid or for simulation
         const output: GenerateQuizOutput = {
           quiz: Array.from({ length: numQuestions }, (_, i) => ({
-            question: `Simulated Question ${i + 1} for ${topicData.title} (${selectedLevel})?`,
+            question: `Simulated Question ${i + 1} for ${topicData.title} (${topicLevel})?`,
             options: [`Option A${i}`, `Option B${i}`, `Option C${i}`, `Option D${i}`],
             correctAnswer: `Option B${i}`, // Example correct answer
           }))
@@ -306,7 +322,7 @@ export default function TopicPage() {
          // Fallback dummy data
         const fallbackOutput: GenerateQuizOutput = {
           quiz: Array.from({ length: numQuestions }, (_, i) => ({
-            question: `Simulated Question ${i + 1} for ${topicData.title} (${selectedLevel})?`,
+            question: `Simulated Question ${i + 1} for ${topicData.title} (${topicLevel})?`,
             options: [`Option A${i}`, `Option B${i}`, `Option C${i}`, `Option D${i}`],
             correctAnswer: `Option B${i}`,
           }))
@@ -330,7 +346,7 @@ export default function TopicPage() {
   };
 
   const handleSaveTopic = (updatedTitle: string, updatedDescription: string) => {
-     if (!topicData) return;
+     if (!topicData || !topicLevel) return; // Need topicLevel
      console.log(`Saving topic: ${updatedTitle} (ID: ${topicId})`);
 
      // 1. Update detailed topic data in localStorage
@@ -348,13 +364,14 @@ export default function TopicPage() {
      const currentSummary = getTopicsSummaryFromStorage();
      const updatedSummary = currentSummary.map(topic =>
        topic.id === topicId
-         ? { ...topic, title: updatedTitle, description: updatedDescription }
+         ? { ...topic, title: updatedTitle, description: updatedDescription, level: topicLevel } // Keep level
          : topic
      );
      saveTopicsSummaryToStorage(updatedSummary); // This will trigger the storage event
 
      // 3. Update local state
      setTopicData(prevData => prevData ? { ...prevData, title: updatedTitle, description: updatedDescription } : null);
+     // topicLevel remains the same, no need to update setTopicLevel
 
      toast({
        title: 'Topic Updated',
@@ -408,7 +425,7 @@ export default function TopicPage() {
         </header>
         {/* Skeleton Content */}
         <div className="p-4 space-y-4 flex-grow">
-            <Skeleton className="h-10 w-full mb-4 rounded-md" /> {/* Tabs Skeleton */}
+            <Skeleton className="h-10 w-24 mb-4 rounded-md" /> {/* Level Badge Skeleton */}
             <Card>
               <CardHeader>
                  <Skeleton className="h-6 w-1/3 mb-2 rounded-md"/>
@@ -432,7 +449,7 @@ export default function TopicPage() {
     );
   }
 
-  if (!topicData) {
+  if (!topicData || !topicLevel) { // Check for both data and level
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center gap-6 min-h-screen text-center">
             <h1 className="text-2xl font-bold text-destructive">Topic Not Found</h1>
@@ -446,11 +463,8 @@ export default function TopicPage() {
     );
   }
 
-  // Dynamically get levels available for the current topic
-  const availableLevels = Object.keys(topicData.content) as Array<'Beginner' | 'Intermediate' | 'Advanced'>;
-  // Ensure selectedLevel is valid for the current topic, default to the first available level
-  const validSelectedLevel = availableLevels.includes(selectedLevel) ? selectedLevel : availableLevels[0];
-
+  // Get content for the specific level
+  const levelContent = topicData.content[topicLevel] ?? [];
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
@@ -499,56 +513,49 @@ export default function TopicPage() {
       </header>
 
       <section className="p-4 flex-grow">
-         <Tabs
-            defaultValue={validSelectedLevel} // Use the validated level
-            className="w-full"
-            onValueChange={(value) => setSelectedLevel(value as 'Beginner' | 'Intermediate' | 'Advanced')}
-            key={topicId} // Add key to force re-render Tabs when topic changes
-            >
-          <TabsList className={`grid w-full grid-cols-${availableLevels.length} mb-4`}>
-            {availableLevels.map(level => (
-                 <TabsTrigger key={level} value={level}>{level}</TabsTrigger>
-            ))}
-          </TabsList>
+          {/* Display Topic Level Badge */}
+          <div className="mb-4">
+              <span className="level-badge">{topicLevel}</span>
+          </div>
 
-           {availableLevels.map(level => (
-            <TabsContent key={level} value={level}>
-                <Card>
-                <CardHeader>
-                    <CardTitle>{level} Level</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {topicData.content[level]?.map((item, index) => ( // Added safe navigation
-                    <p key={index} className="text-foreground leading-relaxed">{item}</p>
-                    )) ?? <p className="text-muted-foreground">No content available for this level.</p>}
-                </CardContent>
-                <CardFooter>
-                    <Button variant="outline" onClick={handleOpenQuizConfirmation} disabled={isGeneratingQuiz}>
-                    {isGeneratingQuiz ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating...
-                        </>
-                    ) : (
-                       <>
-                         <ClipboardCheck className="mr-2 h-4 w-4" /> Take a Quiz
-                       </>
-                    )}
-                    </Button>
-                </CardFooter>
-                </Card>
-            </TabsContent>
-           ))}
-        </Tabs>
+          {/* Display Content based on topicLevel */}
+           <Card>
+             <CardHeader>
+               {/* Removed CardTitle as level is now a badge */}
+             </CardHeader>
+             <CardContent className="space-y-2 pt-0"> {/* Added pt-0 */}
+               {levelContent.length > 0 ? (
+                 levelContent.map((item, index) => (
+                   <p key={index} className="text-foreground leading-relaxed">{item}</p>
+                 ))
+               ) : (
+                 <p className="text-muted-foreground">No content available for this topic at the {topicLevel} level.</p>
+               )}
+             </CardContent>
+             <CardFooter>
+               <Button variant="outline" onClick={handleOpenQuizConfirmation} disabled={isGeneratingQuiz}>
+                 {isGeneratingQuiz ? (
+                   <>
+                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                     Generating...
+                   </>
+                 ) : (
+                   <>
+                     <ClipboardCheck className="mr-2 h-4 w-4" /> Take a Quiz
+                   </>
+                 )}
+               </Button>
+             </CardFooter>
+           </Card>
       </section>
 
       {/* AI Tutor Drawer/Modal */}
-      {topicData && ( // Only render if topicData exists
+      {topicData && topicLevel && ( // Ensure topicLevel exists
           <AiTutor
             isOpen={showAiTutor}
             onClose={() => setShowAiTutor(false)}
             topic={topicData.title}
-            level={validSelectedLevel} // Pass the validated level
+            level={topicLevel} // Pass the inherent level
           />
       )}
 
@@ -565,13 +572,13 @@ export default function TopicPage() {
 
 
        {/* Quiz Confirmation Dialog */}
-        {topicData && ( // Only render if topicData exists
+        {topicData && topicLevel && ( // Ensure topicLevel exists
             <AlertDialog open={showQuizConfirmation} onOpenChange={setShowQuizConfirmation}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                     <AlertDialogTitle>Generate Quiz?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Select the number of questions for your {validSelectedLevel} {topicData.title} quiz.
+                        Select the number of questions for your {topicLevel} {topicData.title} quiz.
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-4">
@@ -608,7 +615,7 @@ export default function TopicPage() {
         )}
 
         {/* Quiz Display Dialog */}
-        {topicData && quizQuestions.length > 0 && ( // Only render if topicData exists
+        {topicData && quizQuestions.length > 0 && topicLevel && ( // Ensure topicLevel exists
             <QuizDisplay
             isOpen={showQuiz}
             onClose={() => {
@@ -617,7 +624,7 @@ export default function TopicPage() {
             }}
             questions={quizQuestions}
             topic={topicData.title}
-            level={validSelectedLevel} // Pass validated level
+            level={topicLevel} // Pass inherent level
             />
         )}
 
@@ -628,5 +635,3 @@ export default function TopicPage() {
     </div>
   );
 }
-
-    

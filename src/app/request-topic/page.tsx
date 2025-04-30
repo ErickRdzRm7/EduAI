@@ -35,7 +35,7 @@ import { useRouter } from 'next/navigation'; // Import useRouter
 interface TopicSummary {
   id: string;
   title: string;
-  level: string; // Representative level
+  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory
   description: string;
 }
 
@@ -43,6 +43,7 @@ interface TopicDetail {
   id: string;
   title: string;
   content: Record<string, string[]>; // Beginner, Intermediate, Advanced content
+  description?: string; // Optional description stored in detail
 }
 
 const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics'; // Key for the summary list
@@ -116,7 +117,7 @@ const formSchema = z.object({
   description: z.string().min(10, {
     message: 'Description must be at least 10 characters.',
   }),
-  level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Any']).default('Any'), // Changed optional to default
+  level: z.enum(['Beginner', 'Intermediate', 'Advanced']).default('Beginner'), // Level is now required, default to Beginner
 });
 
 export default function RequestTopicPage() {
@@ -157,7 +158,7 @@ export default function RequestTopicPage() {
     defaultValues: {
       topicName: '',
       description: '',
-      level: 'Any',
+      level: 'Beginner', // Default level in the form
     },
   });
 
@@ -166,24 +167,25 @@ export default function RequestTopicPage() {
     console.log("Submitting topic request:", values);
 
     const slug = createSlug(values.topicName);
-    const newTopicLevel = values.level === 'Any' ? 'Beginner' : values.level; // Default to Beginner if 'Any'
+    const newTopicLevel = values.level; // Use the selected level directly
 
     // 1. Create the new topic summary object
     const newTopicSummary: TopicSummary = {
       id: slug,
       title: values.topicName,
-      level: newTopicLevel,
+      level: newTopicLevel, // Assign the specific level
       description: values.description,
     };
 
-    // 2. Create the new topic detail object (with placeholder content)
+    // 2. Create the new topic detail object (with placeholder content for all levels)
     const newTopicDetail: TopicDetail = {
       id: slug,
       title: values.topicName,
+      description: values.description, // Also store description here
       content: {
-        Beginner: ['Content for Beginner level is being generated...', `Details: ${values.description}`],
-        Intermediate: ['Content for Intermediate level is being generated...'],
-        Advanced: ['Content for Advanced level is being generated...'],
+        Beginner: [`Content for ${values.topicName} (Beginner) is being generated...`, `Details: ${values.description}`],
+        Intermediate: [`Content for ${values.topicName} (Intermediate) is being generated...`],
+        Advanced: [`Content for ${values.topicName} (Advanced) is being generated...`],
       },
     };
 
@@ -195,24 +197,22 @@ export default function RequestTopicPage() {
         saveTopicsSummaryToStorage(updatedSummary);
     } else {
         console.warn(`Topic with slug "${slug}" already exists in summary. Skipping summary update.`);
+        // Optionally, update the existing summary if needed
     }
 
 
-    // 4. Add to localStorage Details
+    // 4. Add/Update localStorage Details
     const currentDetails = getTopicDetailsFromStorage();
-    if (!currentDetails[slug]) {
-        currentDetails[slug] = newTopicDetail;
-        saveTopicDetailsToStorage(currentDetails);
-    } else {
-        console.warn(`Topic with slug "${slug}" already exists in details. Skipping details update.`);
-    }
+    // Always update details, even if slug exists, to ensure content placeholders are fresh
+    currentDetails[slug] = newTopicDetail;
+    saveTopicDetailsToStorage(currentDetails);
 
 
-    console.log(`Created topic with slug: ${slug}`);
+    console.log(`Created/Updated topic with slug: ${slug} and level: ${newTopicLevel}`);
 
     toast({
       title: 'Topic Request Submitted',
-      description: `"${values.topicName}" created. Redirecting to topic page...`,
+      description: `"${values.topicName}" (${newTopicLevel}) created/updated. Redirecting...`,
     });
 
     router.push(`/topics/${slug}`);
@@ -283,22 +283,22 @@ export default function RequestTopicPage() {
               name="level"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Suggested Level</FormLabel>
+                  <FormLabel>Difficulty Level</FormLabel> {/* Changed label */}
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a suggested difficulty level" />
+                        <SelectValue placeholder="Select the difficulty level" /> {/* Changed placeholder */}
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="Beginner">Beginner</SelectItem>
                       <SelectItem value="Intermediate">Intermediate</SelectItem>
                       <SelectItem value="Advanced">Advanced</SelectItem>
-                      <SelectItem value="Any">Any Level (Defaults to Beginner)</SelectItem>
+                      {/* Removed 'Any Level' option */}
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Suggest a starting difficulty level. 'Any' will default to Beginner content initially.
+                    Select the appropriate difficulty level for this topic.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -317,5 +317,3 @@ export default function RequestTopicPage() {
     </div>
   );
 }
-
-    
