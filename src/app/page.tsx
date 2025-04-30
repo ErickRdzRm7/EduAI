@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Search,
@@ -26,20 +27,96 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation'; // Import useRouter
 
-// Helper function to get icon based on topic
-const getTopicIcon = (topic: string): ReactNode => {
-  const lowerTopic = topic.toLowerCase();
+// --- Topic Data Management ---
+
+// Define the structure for a topic
+interface Topic {
+  id: string;
+  title: string;
+  level: string; // Representative level for the card
+  description: string;
+}
+
+// Default topics if localStorage is empty
+const DEFAULT_TOPICS: Topic[] = [
+  {
+    id: 'java-programming',
+    title: 'Java Programming',
+    level: 'Beginner',
+    description: 'Learn the fundamentals of Java syntax, object-oriented programming, and core libraries.',
+  },
+  {
+    id: 'intermediate-mathematics',
+    title: 'Intermediate Mathematics',
+    level: 'Intermediate',
+    description: 'Explore calculus concepts like limits, derivatives, integrals, and their applications.',
+  },
+  {
+    id: 'organic-chemistry-principles',
+    title: 'Organic Chemistry Principles',
+    level: 'Advanced',
+    description: 'Delve into the structure, properties, reactions, and synthesis of organic compounds.',
+  },
+  {
+    id: 'data-structures',
+    title: 'Data Structures',
+    level: 'Intermediate',
+    description: 'Understand arrays, linked lists, stacks, queues, trees, and graphs.',
+  },
+  {
+    id: 'linear-algebra',
+    title: 'Linear Algebra',
+    level: 'Beginner',
+    description: 'Introduction to vectors, matrices, systems of linear equations, and eigenvalues.',
+  },
+  {
+    id: 'web-development-basics',
+    title: 'Web Development Basics',
+    level: 'Beginner',
+    description: 'Learn HTML, CSS, and JavaScript fundamentals for building web pages.',
+  },
+];
+
+const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics';
+
+// Function to get topics from localStorage
+const getTopicsFromStorage = (): Topic[] => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_TOPICS; // Return default during SSR or if window is unavailable
+  }
+  try {
+    const storedTopics = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
+    if (storedTopics) {
+      return JSON.parse(storedTopics);
+    } else {
+      // Initialize localStorage if empty
+      localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(DEFAULT_TOPICS));
+      return DEFAULT_TOPICS;
+    }
+  } catch (error) {
+    console.error("Error accessing or parsing localStorage for topics:", error);
+    return DEFAULT_TOPICS; // Fallback to default on error
+  }
+};
+
+// --- End Topic Data Management ---
+
+
+// Helper function to get icon based on topic title
+const getTopicIcon = (topicTitle: string): ReactNode => {
+  const lowerTopic = topicTitle.toLowerCase();
   if (
     lowerTopic.includes('java') ||
     lowerTopic.includes('programming') ||
-    lowerTopic.includes('development')
+    lowerTopic.includes('development') ||
+    lowerTopic.includes('data structures') // Added data structures
   ) {
     return <Code className="h-6 w-6 text-accent mr-2" />;
   }
   if (
     lowerTopic.includes('mathematics') ||
     lowerTopic.includes('math') ||
-    lowerTopic.includes('algebra')
+    lowerTopic.includes('algebra') // Added linear algebra
   ) {
     return <Calculator className="h-6 w-6 text-accent mr-2" />;
   }
@@ -49,45 +126,18 @@ const getTopicIcon = (topic: string): ReactNode => {
   return <Brain className="h-6 w-6 text-accent mr-2" />; // Default icon
 };
 
-// Helper function to create slugs
-const createSlug = (text: string): string => {
-    return text
-      .toLowerCase()
-      .replace(/ /g, '-') // Replace spaces with hyphens
-      .replace(/[^\w-]+/g, ''); // Remove all non-word chars
-};
-
-// Simple SVG for EduAI logo (Book + Brain/Chip)
-const EduAILogo = () => (
-  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
-    {/* Book */}
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 1 4 14.5V4.5A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    {/* Simplified Brain/Chip */}
-    <path d="M12 11V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M10 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M9 7h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M12 13v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M10 15h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    {/* Optional connections */}
-    <path d="M9.5 7L8 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-    <path d="M14.5 7L16 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-    <path d="M8 13l1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-    <path d="M16 13l-1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-  </svg>
-);
-
 
 const TopicCard = ({
   topic,
   level,
   description,
+  slug // Use slug directly passed from props
 }: {
   topic: string;
   level: string;
   description: string;
+  slug: string;
 }) => {
-  const slug = createSlug(topic);
   return (
     <Link href={`/topics/${slug}`} passHref>
         <Card className="card transition-all hover:scale-103 hover:shadow-lg"> {/* Applied hover effect */}
@@ -129,12 +179,43 @@ interface User {
   email?: string; // Optional email
 }
 
+// Simple SVG for EduAI logo (Book + Brain/Chip) - Keep this as it is
+const EduAILogo = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
+    {/* Book */}
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 1 4 14.5V4.5A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Simplified Brain/Chip */}
+    <path d="M12 11V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M10 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M9 7h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 13v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M10 15h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    {/* Optional connections */}
+    <path d="M9.5 7L8 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M14.5 7L16 9" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M8 13l1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+    <path d="M16 13l-1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+  </svg>
+);
+
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [topics, setTopics] = useState<Topic[]>([]); // State for topics
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [searchTerm, setSearchTerm] = useState(''); // State for search term
   const router = useRouter();
+
+  // Function to load topics
+  const loadTopics = useCallback(() => {
+    setTopicsLoading(true);
+    const loadedTopics = getTopicsFromStorage();
+    setTopics(loadedTopics);
+    setTopicsLoading(false);
+  }, []);
 
   // Authentication check effect
   useEffect(() => {
@@ -144,8 +225,7 @@ export default function Home() {
         if (!isAuthenticated) {
           router.push('/login');
         } else {
-          // Simulate fetching user data
-          setUser({ name: 'User', email: 'user@example.com' }); // Basic user with email
+          setUser({ name: 'User', email: 'user@example.com' });
         }
       } catch (error) {
         console.error("Error accessing localStorage:", error);
@@ -159,10 +239,7 @@ export default function Home() {
 
   // Theme loading effect
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as
-      | 'light'
-      | 'dark'
-      | null;
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     if (savedTheme) {
       setTheme(savedTheme);
       if (savedTheme === 'dark') {
@@ -171,7 +248,6 @@ export default function Home() {
         document.documentElement.classList.remove('dark');
       }
     } else {
-      // If no theme is saved, default to dark and save it
       setTheme('dark');
       document.documentElement.classList.add('dark');
        try {
@@ -182,10 +258,9 @@ export default function Home() {
     }
   }, []);
 
-
-  // Theme application effect - applies class and saves to localStorage
+  // Theme application effect
   useEffect(() => {
-    if (typeof window !== 'undefined') { // Ensure this runs only on the client
+    if (typeof window !== 'undefined') {
       if (theme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
@@ -199,20 +274,31 @@ export default function Home() {
     }
   }, [theme]);
 
-
-  // Topic loading simulation effect
+  // Initial Topic loading effect
   useEffect(() => {
     if (!authLoading && user) {
-      setTimeout(() => {
-        setTopicsLoading(false);
-      }, 1000);
+       loadTopics(); // Load topics after authentication is confirmed
     }
-  }, [authLoading, user]);
+  }, [authLoading, user, loadTopics]);
+
+  // Effect to reload topics if localStorage changes (e.g., after deletion)
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === LOCAL_STORAGE_TOPICS_KEY) {
+        loadTopics();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadTopics]);
+
 
   const toggleTheme = () => {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
   };
-
 
   const handleSignOut = () => {
     try {
@@ -223,6 +309,13 @@ export default function Home() {
     setUser(null);
     router.push('/login');
   };
+
+  // Filter topics based on search term
+  const filteredTopics = topics.filter(topic =>
+    topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    topic.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
 
   if (authLoading) {
     return (
@@ -246,7 +339,7 @@ export default function Home() {
         <Link href="/" passHref>
           <div className="flex items-center gap-2 cursor-pointer">
             <EduAILogo />
-            <h1 className="text-2xl font-bold hidden sm:block">EduAI</h1> {/* Show text on larger screens */}
+            <h1 className="text-2xl font-bold hidden sm:block">EduAI</h1>
           </div>
         </Link>
         <div className="flex items-center gap-4">
@@ -262,19 +355,17 @@ export default function Home() {
               <Sun className="h-5 w-5" />
             )}
           </Button>
-          {/* User info and Sign Out Button */}
           <div className="flex items-center gap-2">
             <Link href="/profile" passHref>
              <Avatar className="cursor-pointer">
                <AvatarImage src={user.imageUrl} alt={user.name} />
                <AvatarFallback>
-                 {/* Use UserIcon if name is 'User' or no name */}
                  {user.name && user.name !== 'User' ? user.name[0].toUpperCase() : <UserIcon className="h-5 w-5" />}
                </AvatarFallback>
              </Avatar>
             </Link>
             <Link href="/profile" passHref>
-             <span className="cursor-pointer hover:underline hidden sm:block">{user.name}</span> {/* Hide name on small screens if needed */}
+             <span className="cursor-pointer hover:underline hidden sm:block">{user.name}</span>
             </Link>
              <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sign out">
                <LogOut className="h-5 w-5" />
@@ -283,12 +374,14 @@ export default function Home() {
         </div>
       </header>
        <section className="p-4 flex-grow">
-        <div className="search-container mb-6 flex flex-col sm:flex-row items-center gap-4">
+        <div className="search-container flex flex-col sm:flex-row items-center gap-4">
           <div className="relative flex-grow w-full">
             <Search className="search-icon absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-accent" />
             <input
               type="search"
               placeholder="Search topics..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input flex-1 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 focus:border-accent" // Added focus:border-accent
             />
           </div>
@@ -301,60 +394,34 @@ export default function Home() {
         <h2 className="text-xl font-semibold mb-4">Explore Topics</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {topicsLoading ? (
-            <>
-              <TopicCardSkeleton />
-              <TopicCardSkeleton />
-              <TopicCardSkeleton />
-              <TopicCardSkeleton />
-              <TopicCardSkeleton />
-              <TopicCardSkeleton />
-            </>
+            // Show skeletons based on a fixed number or default topics length
+            Array.from({ length: 6 }).map((_, index) => <TopicCardSkeleton key={index} />)
+          ) : filteredTopics.length > 0 ? (
+             filteredTopics.map((topic) => (
+                <TopicCard
+                  key={topic.id}
+                  topic={topic.title}
+                  level={topic.level}
+                  description={topic.description}
+                  slug={topic.id} // Pass the topic id as slug
+                />
+              ))
           ) : (
-            <>
-              <TopicCard
-                topic="Java Programming"
-                level="Beginner"
-                description="Learn the fundamentals of Java syntax, object-oriented programming, and core libraries."
-              />
-              <TopicCard
-                topic="Intermediate Mathematics"
-                level="Intermediate"
-                description="Explore calculus concepts like limits, derivatives, integrals, and their applications."
-              />
-              <TopicCard
-                topic="Organic Chemistry Principles"
-                level="Advanced"
-                description="Delve into the structure, properties, reactions, and synthesis of organic compounds."
-              />
-              <TopicCard
-                topic="Data Structures"
-                level="Intermediate"
-                description="Understand arrays, linked lists, stacks, queues, trees, and graphs."
-              />
-              <TopicCard
-                topic="Linear Algebra"
-                level="Beginner"
-                description="Introduction to vectors, matrices, systems of linear equations, and eigenvalues."
-              />
-              <TopicCard
-                topic="Web Development Basics"
-                level="Beginner"
-                description="Learn HTML, CSS, and JavaScript fundamentals for building web pages."
-              />
-            </>
+              <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                 <p className="empty-state-message">
+                    {searchTerm ? `No topics found for "${searchTerm}".` : "No topics available."}
+                 </p>
+              </div>
           )}
         </div>
-        {!topicsLoading && (
-          <div className="empty-state-message mt-8 text-center text-muted-foreground">
-            Start exploring topics or use the search bar!
-          </div>
-        )}
-      </section>
+       </section>
        <footer className="p-4 mt-auto">
-         <p className="footer-text text-center text-sm text-muted-foreground">
+         <p className="footer-text">
            © {new Date().getFullYear()} EduAI. All rights reserved.
          </p>
        </footer>
     </div>
   );
 }
+
+    

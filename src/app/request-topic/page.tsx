@@ -29,6 +29,77 @@ import { ArrowLeft, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react'; // Import useEffect and useState
 import { useRouter } from 'next/navigation'; // Import useRouter
 
+
+// --- Topic Data Management (Duplicated for consistency, ideally centralize) ---
+
+interface TopicSummary {
+  id: string;
+  title: string;
+  level: string; // Representative level
+  description: string;
+}
+
+interface TopicDetail {
+  id: string;
+  title: string;
+  content: Record<string, string[]>; // Beginner, Intermediate, Advanced content
+}
+
+const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics'; // Key for the summary list
+const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
+
+// Function to get topic details from localStorage
+const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const storedDetails = localStorage.getItem(LOCAL_STORAGE_DETAILS_KEY);
+    return storedDetails ? JSON.parse(storedDetails) : {};
+  } catch (error) {
+    console.error("Error accessing or parsing localStorage for topic details:", error);
+    return {};
+  }
+};
+
+// Function to save topic details to localStorage
+const saveTopicDetailsToStorage = (details: Record<string, TopicDetail>) => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
+      // Dispatch storage event for details (optional, if other parts need detail updates)
+      // window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_DETAILS_KEY }));
+    } catch (error) {
+      console.error("Error saving topic details to localStorage:", error);
+    }
+  }
+};
+
+// Function to save the summary topic list to localStorage
+const saveTopicsSummaryToStorage = (topics: TopicSummary[]) => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(topics));
+      // Dispatch a storage event to notify the home page
+      window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_TOPICS_KEY }));
+    } catch (error) {
+      console.error("Error saving topics summary to localStorage:", error);
+    }
+  }
+};
+
+// Function to get the summary topic list from localStorage
+const getTopicsSummaryFromStorage = (): TopicSummary[] => {
+   if (typeof window === 'undefined') return [];
+   try {
+     const stored = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
+     return stored ? JSON.parse(stored) : [];
+   } catch (error) {
+     console.error("Error getting topics summary from localStorage:", error);
+     return [];
+   }
+};
+
+// --- End Topic Data Management ---
+
 // Helper function to create slugs (consistent with home page)
 const createSlug = (text: string): string => {
     return text
@@ -45,13 +116,13 @@ const formSchema = z.object({
   description: z.string().min(10, {
     message: 'Description must be at least 10 characters.',
   }),
-  level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Any']).optional(),
+  level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Any']).default('Any'), // Changed optional to default
 });
 
 export default function RequestTopicPage() {
   const { toast } = useToast();
-  const router = useRouter(); // Initialize router
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // Default to dark
+  const router = useRouter();
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
    // Theme loading effect
   useEffect(() => {
@@ -61,14 +132,12 @@ export default function RequestTopicPage() {
       | null;
     if (savedTheme) {
       setTheme(savedTheme);
-      // RootLayout handles initial class application via script
     }
-    // If no theme is saved, the 'dark' state default is already set
   }, []);
 
-  // Theme application effect - applies class and saves to localStorage
+  // Theme application effect
   useEffect(() => {
-    if (typeof window !== 'undefined') { // Ensure this runs only on the client
+    if (typeof window !== 'undefined') {
       if (theme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
@@ -92,30 +161,61 @@ export default function RequestTopicPage() {
     },
   });
 
-  // Updated submit handler
+  // Updated submit handler to add topic to localStorage
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Submitting topic request:", values); // Log the form data
+    console.log("Submitting topic request:", values);
 
-    // 1. Generate the slug for the new topic
     const slug = createSlug(values.topicName);
+    const newTopicLevel = values.level === 'Any' ? 'Beginner' : values.level; // Default to Beginner if 'Any'
 
-    // 2. Simulate topic creation (In a real app, this would be an API call)
-    // NOTE: This simulation doesn't actually add to MOCK_TOPICS in [topicId]/page.tsx
-    //       So the user will land on the "Topic Not Found" page for the new slug.
-    //       This demonstrates the redirect flow as requested.
-    console.log(`Simulating creation of topic with slug: ${slug}`);
+    // 1. Create the new topic summary object
+    const newTopicSummary: TopicSummary = {
+      id: slug,
+      title: values.topicName,
+      level: newTopicLevel,
+      description: values.description,
+    };
 
-    // 3. Show toast notification
+    // 2. Create the new topic detail object (with placeholder content)
+    const newTopicDetail: TopicDetail = {
+      id: slug,
+      title: values.topicName,
+      content: {
+        Beginner: ['Content for Beginner level is being generated...', `Details: ${values.description}`],
+        Intermediate: ['Content for Intermediate level is being generated...'],
+        Advanced: ['Content for Advanced level is being generated...'],
+      },
+    };
+
+    // 3. Add to localStorage Summary List
+    const currentSummary = getTopicsSummaryFromStorage();
+    // Avoid adding duplicates based on slug
+    if (!currentSummary.some(topic => topic.id === slug)) {
+        const updatedSummary = [...currentSummary, newTopicSummary];
+        saveTopicsSummaryToStorage(updatedSummary);
+    } else {
+        console.warn(`Topic with slug "${slug}" already exists in summary. Skipping summary update.`);
+    }
+
+
+    // 4. Add to localStorage Details
+    const currentDetails = getTopicDetailsFromStorage();
+    if (!currentDetails[slug]) {
+        currentDetails[slug] = newTopicDetail;
+        saveTopicDetailsToStorage(currentDetails);
+    } else {
+        console.warn(`Topic with slug "${slug}" already exists in details. Skipping details update.`);
+    }
+
+
+    console.log(`Created topic with slug: ${slug}`);
+
     toast({
       title: 'Topic Request Submitted',
-      description: `"${values.topicName}" submitted. Redirecting to topic page...`,
+      description: `"${values.topicName}" created. Redirecting to topic page...`,
     });
 
-    // 4. Redirect the user to the newly "created" topic page
     router.push(`/topics/${slug}`);
-
-    // Reset form - might happen too fast before redirect, consider removing or delaying if needed
-    // form.reset();
   }
 
   const toggleTheme = () => {
@@ -126,7 +226,7 @@ export default function RequestTopicPage() {
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
        <header className="flex items-center justify-between p-4 bg-secondary rounded-md header-border">
-        <div className="flex items-center gap-4"> {/* Group back button and title */}
+        <div className="flex items-center gap-4">
             <Link href="/" passHref>
                 <Button variant="outline" size="icon" aria-label="Go back home">
                      <ArrowLeft className="h-4 w-4" />
@@ -152,7 +252,7 @@ export default function RequestTopicPage() {
                     <Input placeholder="e.g., Quantum Physics, React Hooks" {...field} />
                   </FormControl>
                   <FormDescription>
-                    What topic would you like to learn about?
+                    What topic would you like to learn about? (This will also be used for the URL)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -183,7 +283,7 @@ export default function RequestTopicPage() {
               name="level"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Suggested Level (Optional)</FormLabel>
+                  <FormLabel>Suggested Level</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -194,17 +294,17 @@ export default function RequestTopicPage() {
                       <SelectItem value="Beginner">Beginner</SelectItem>
                       <SelectItem value="Intermediate">Intermediate</SelectItem>
                       <SelectItem value="Advanced">Advanced</SelectItem>
-                      <SelectItem value="Any">Any Level</SelectItem>
+                      <SelectItem value="Any">Any Level (Defaults to Beginner)</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Suggest a starting difficulty level if you have one in mind.
+                    Suggest a starting difficulty level. 'Any' will default to Beginner content initially.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit">Submit Request</Button>
+            <Button type="submit">Create Topic & Go</Button>
           </form>
         </Form>
       </section>
@@ -217,3 +317,5 @@ export default function RequestTopicPage() {
     </div>
   );
 }
+
+    
