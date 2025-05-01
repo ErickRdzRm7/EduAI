@@ -25,9 +25,10 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { ArrowLeft, Moon, Sun } from 'lucide-react';
-import { useEffect, useState } from 'react'; // Import useEffect and useState
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { ArrowLeft, Loader2, Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { generateTopicContent, type GenerateTopicContentInput } from '@/ai/flows/generate-topic-content-flow'; // Import the new AI flow
 
 
 // --- Topic Data Management (Duplicated for consistency, ideally centralize) ---
@@ -42,7 +43,7 @@ interface TopicSummary {
 interface TopicDetail {
   id: string;
   title: string;
-  content: Record<string, string[]>; // Beginner, Intermediate, Advanced content
+  content: Record<string, string[]>; // Beginner, Intermediate, Advanced content arrays of strings
   description?: string; // Optional description stored in detail
 }
 
@@ -124,6 +125,7 @@ export default function RequestTopicPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state for AI generation
 
    // Theme loading effect
   useEffect(() => {
@@ -162,12 +164,49 @@ export default function RequestTopicPage() {
     },
   });
 
-  // Updated submit handler to add topic to localStorage
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  // Updated submit handler to call AI and add topic to localStorage
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true);
     console.log("Submitting topic request:", values);
 
     const slug = createSlug(values.topicName);
     const newTopicLevel = values.level; // Use the selected level directly
+
+    let generatedContent: TopicDetail['content'];
+
+    try {
+        // Call the AI flow to generate content
+        const aiInput: GenerateTopicContentInput = {
+            topicName: values.topicName,
+            description: values.description,
+            baseLevel: newTopicLevel,
+        };
+        // Simulate API delay if needed for testing UI
+        // await new Promise(resolve => setTimeout(resolve, 2000));
+        const aiOutput = await generateTopicContent(aiInput);
+        generatedContent = {
+            Beginner: aiOutput.beginner,
+            Intermediate: aiOutput.intermediate,
+            Advanced: aiOutput.advanced,
+        };
+        console.log("AI generated content:", generatedContent);
+
+    } catch (error) {
+        console.error("Error generating topic content with AI:", error);
+        toast({
+            title: 'AI Content Generation Failed',
+            description: 'Could not generate learning points. Using placeholders.',
+            variant: 'destructive',
+        });
+        // Fallback placeholder content
+        generatedContent = {
+            Beginner: [`Introduction to ${values.topicName} (Beginner)`, `Topic Description: ${values.description}`,'More content coming soon...'],
+            Intermediate: [`Welcome to ${values.topicName} (Intermediate)!`, 'More content coming soon...'],
+            Advanced: [`Welcome to ${values.topicName} (Advanced)!`, 'More content coming soon...'],
+        };
+    } finally {
+         setIsSubmitting(false);
+    }
 
     // 1. Create the new topic summary object
     const newTopicSummary: TopicSummary = {
@@ -177,17 +216,12 @@ export default function RequestTopicPage() {
       description: values.description,
     };
 
-    // 2. Create the new topic detail object (with placeholder content for all levels)
+    // 2. Create the new topic detail object using generated content
     const newTopicDetail: TopicDetail = {
       id: slug,
       title: values.topicName,
       description: values.description, // Also store description here
-      content: {
-        // Provide basic placeholder content for each level
-        Beginner: [`Welcome to ${values.topicName} (Beginner)!`, `Topic Description: ${values.description}`,'More content coming soon...'],
-        Intermediate: [`Welcome to ${values.topicName} (Intermediate)!`, 'More content coming soon...'],
-        Advanced: [`Welcome to ${values.topicName} (Advanced)!`, 'More content coming soon...'],
-      },
+      content: generatedContent, // Use the AI-generated or fallback content
     };
 
     // 3. Add to localStorage Summary List
@@ -214,10 +248,22 @@ export default function RequestTopicPage() {
     saveTopicDetailsToStorage(currentDetails);
     console.log(`Created/Updated topic details for slug: ${slug}`);
 
+    // Save progress data structure (initialize as empty)
+    const progressKey = `eduai-progress-${slug}`;
+    if (!localStorage.getItem(progressKey)) {
+        const initialProgress: Record<string, boolean> = {};
+        try {
+          localStorage.setItem(progressKey, JSON.stringify(initialProgress));
+          console.log(`Initialized progress tracking for topic: ${slug}`);
+        } catch (e) {
+          console.error(`Failed to initialize progress for ${slug}:`, e);
+        }
+    }
+
 
     toast({
-      title: 'Topic Request Submitted',
-      description: `"${values.topicName}" (${newTopicLevel}) created/updated. Redirecting...`,
+      title: 'Topic Created',
+      description: `"${values.topicName}" (${newTopicLevel}) created with AI suggestions. Redirecting...`,
     });
 
     // Redirect to the newly created/updated topic page
@@ -255,7 +301,7 @@ export default function RequestTopicPage() {
                 <FormItem>
                   <FormLabel>Topic Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Quantum Physics, React Hooks" {...field} />
+                    <Input placeholder="e.g., Quantum Physics, React Hooks" {...field} disabled={isSubmitting} />
                   </FormControl>
                   <FormDescription>
                     What topic would you like to learn about? (This will also be used for the URL)
@@ -275,10 +321,11 @@ export default function RequestTopicPage() {
                       placeholder="Briefly describe what aspects of the topic you're interested in."
                       className="resize-none"
                       {...field}
+                       disabled={isSubmitting}
                     />
                   </FormControl>
                   <FormDescription>
-                    Providing details helps us create better content.
+                    Providing details helps the AI generate better learning points.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -289,28 +336,40 @@ export default function RequestTopicPage() {
               name="level"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Difficulty Level</FormLabel> {/* Changed label */}
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Primary Difficulty Level</FormLabel> {/* Changed label */}
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isSubmitting}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select the difficulty level" /> {/* Changed placeholder */}
+                        <SelectValue placeholder="Select the primary difficulty level" /> {/* Changed placeholder */}
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="Beginner">Beginner</SelectItem>
                       <SelectItem value="Intermediate">Intermediate</SelectItem>
                       <SelectItem value="Advanced">Advanced</SelectItem>
-                      {/* Removed 'Any Level' option */}
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Select the appropriate difficulty level for this topic.
+                    Select the main difficulty level for this topic. The AI will generate points for all levels.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit">Create Topic & Go</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating & Creating...
+                </>
+              ) : (
+                "Create Topic with AI"
+              )}
+            </Button>
           </form>
         </Form>
       </section>

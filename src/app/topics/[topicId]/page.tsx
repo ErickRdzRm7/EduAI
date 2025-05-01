@@ -6,10 +6,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MessageCircle, Moon, Sun, ClipboardCheck, Loader2, Pencil, Trash2 } from 'lucide-react'; // Added Pencil, Trash2
+import { ArrowLeft, MessageCircle, Moon, Sun, Loader2, Pencil, Trash2, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
 import AiTutor from '@/components/ai-tutor';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Keep Card imports if needed elsewhere
 import { useToast } from '@/hooks/use-toast';
 import { generateQuiz, type GenerateQuizInput, type GenerateQuizOutput, type QuizQuestion } from '@/ai/flows/generate-quiz-flow';
 import QuizDisplay from '@/components/quiz-display';
@@ -22,7 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Import AlertDialogTrigger
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,7 +32,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import EditTopicDialog from '@/components/edit-topic-dialog'; // Import the new dialog
+import EditTopicDialog from '@/components/edit-topic-dialog';
+import TopicContentDisplay from '@/components/topic-content-display'; // Import the new content display component
 
 
 // --- Topic Data Management ---
@@ -49,7 +50,7 @@ interface TopicDetail {
   title: string;
   // Level is not stored here, it's derived from TopicSummary
   description?: string; // Description might be optional
-  content: Record<string, string[]>; // Beginner, Intermediate, Advanced content
+  content: Record<string, string[]>; // Beginner, Intermediate, Advanced content arrays of strings
 }
 
 // Default topics structure matching TopicDetail - Only used to initialize localStorage if empty
@@ -59,62 +60,176 @@ const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
     title: 'Java Programming',
     description: 'Learn the fundamentals of Java syntax, object-oriented programming, and core libraries.',
     content: {
-      Beginner: [/* ... content ... */ 'Introduction to Java: What is Java? History, Features.', 'Setting up the Environment: JDK Installation, IDE Setup (IntelliJ, Eclipse).', 'Basic Syntax: Variables, Data Types, Operators.', 'Control Flow: If-else statements, Loops (for, while).', 'First Java Program: Hello World!',],
-      Intermediate: [/* ... content ... */'Object-Oriented Programming (OOP): Classes, Objects, Inheritance, Polymorphism, Encapsulation.', 'Methods: Defining and Calling Methods.', 'Arrays and Collections: ArrayList, HashMap.', 'Exception Handling: Try-catch blocks.',],
-      Advanced: [/* ... content ... */ 'Generics: Understanding Type Parameters.', 'Multithreading: Creating and Managing Threads.', 'File I/O: Reading and Writing Files.', 'Introduction to Java Frameworks (Spring Boot).', 'Lambda Expressions and Streams.',],
+        Beginner: [
+            'Introduction to Java: What is Java? History, Features.',
+            'Setting up the Environment: JDK Installation, IDE Setup (IntelliJ, Eclipse).',
+            'Basic Syntax: Variables, Data Types, Operators.',
+            'Control Flow: If-else statements, Loops (for, while).',
+            'First Java Program: Hello World!',
+        ],
+        Intermediate: [
+            'Object-Oriented Programming (OOP): Classes, Objects, Inheritance, Polymorphism, Encapsulation.',
+            'Methods: Defining and Calling Methods.',
+            'Arrays and Collections: ArrayList, HashMap.',
+            'Exception Handling: Try-catch blocks.',
+            'Working with Strings.',
+        ],
+        Advanced: [
+            'Generics: Understanding Type Parameters.',
+            'Multithreading: Creating and Managing Threads.',
+            'File I/O: Reading and Writing Files.',
+            'Introduction to Java Frameworks (Spring Boot).',
+            'Lambda Expressions and Streams.',
+            'Advanced Design Patterns.',
+        ]
     },
   },
-  'intermediate-mathematics': {
-    id: 'intermediate-mathematics',
-    title: 'Intermediate Mathematics',
-    description: 'Explore calculus concepts like limits, derivatives, integrals, and their applications.',
-    content: {
-      Beginner: [ /* ... content ... */ 'Review of Algebra: Equations, Inequalities.', 'Functions: Domain, Range, Types of Functions.', 'Introduction to Limits.',],
-      Intermediate: [ /* ... content ... */ 'Derivatives: Definition, Rules (Power, Product, Quotient, Chain).', 'Applications of Derivatives: Rate of Change, Optimization.', 'Integrals: Definite and Indefinite Integrals, Fundamental Theorem of Calculus.', 'Techniques of Integration.', ],
-      Advanced: [ /* ... content ... */ 'Sequences and Series: Convergence Tests.', 'Differential Equations: First Order Equations.', 'Multivariable Calculus Introduction.',],
+    'intermediate-mathematics': {
+        id: 'intermediate-mathematics',
+        title: 'Intermediate Mathematics',
+        description: 'Explore calculus concepts like limits, derivatives, integrals, and their applications.',
+        content: {
+            Beginner: [
+                'Review of Algebra: Equations, Inequalities.',
+                'Functions: Domain, Range, Types of Functions.',
+                'Introduction to Limits: Definition and Properties.',
+                'Basic Limit Calculations.',
+                'Continuity.',
+            ],
+            Intermediate: [
+                'Derivatives: Definition, Rules (Power, Product, Quotient, Chain).',
+                'Applications of Derivatives: Rate of Change, Optimization.',
+                'Integrals: Definite and Indefinite Integrals.',
+                'Fundamental Theorem of Calculus.',
+                'Techniques of Integration (Substitution).',
+            ],
+            Advanced: [
+                'Further Integration Techniques (Integration by Parts, Partial Fractions).',
+                'Sequences and Series: Convergence Tests.',
+                'Introduction to Differential Equations: First Order Equations.',
+                'Multivariable Calculus Introduction: Partial Derivatives.',
+                'Applications in Physics and Engineering.',
+            ]
+        }
     },
-  },
-  'organic-chemistry-principles': {
-     id: 'organic-chemistry-principles',
-     title: 'Organic Chemistry Principles',
-     description: 'Delve into the structure, properties, reactions, and synthesis of organic compounds.',
-     content: {
-         Beginner: [ /* ... content ... */ 'Introduction to Organic Chemistry: Bonding, Lewis Structures.', 'Functional Groups: Alkanes, Alkenes, Alkynes, Alcohols, Ethers.', 'Nomenclature: IUPAC Naming.', ],
-         Intermediate: [ /* ... content ... */ 'Stereochemistry: Chirality, Enantiomers, Diastereomers.', 'Reaction Mechanisms: SN1, SN2, E1, E2 Reactions.', 'Spectroscopy Basics: IR, NMR.',],
-         Advanced: [ /* ... content ... */ 'Aromaticity: Huckel\'s Rule, Electrophilic Aromatic Substitution.', 'Carbonyl Chemistry: Aldehydes, Ketones, Carboxylic Acids and Derivatives.', 'Synthesis Strategies.', 'Advanced Spectroscopic Analysis.',]
-     }
-  },
+    'organic-chemistry-principles': {
+        id: 'organic-chemistry-principles',
+        title: 'Organic Chemistry Principles',
+        description: 'Delve into the structure, properties, reactions, and synthesis of organic compounds.',
+        content: {
+            Beginner: [
+                'Introduction to Organic Chemistry: Bonding, Lewis Structures, Hybridization.',
+                'Functional Groups: Alkanes, Alkenes, Alkynes, Alkyl Halides.',
+                'Basic Nomenclature: IUPAC Naming for simple compounds.',
+                'Introduction to Isomerism: Constitutional Isomers.',
+                'Acid-Base Chemistry in Organic Context.',
+            ],
+            Intermediate: [
+                'Stereochemistry: Chirality, Enantiomers, Diastereomers, Meso Compounds.',
+                'Alcohols, Ethers, Epoxides: Properties and Reactions.',
+                'Introduction to Reaction Mechanisms: SN1, SN2, E1, E2 Reactions.',
+                'Spectroscopy Basics: IR Spectroscopy, Introduction to NMR.',
+                'Reactions of Alkenes and Alkynes.',
+            ],
+            Advanced: [
+                'Aromaticity: Huckel\'s Rule, Electrophilic Aromatic Substitution (EAS).',
+                'Carbonyl Chemistry: Aldehydes, Ketones - Reactions and Synthesis.',
+                'Carboxylic Acids and Derivatives: Properties and Reactions.',
+                'Amines: Properties and Synthesis.',
+                'Advanced Spectroscopic Analysis (NMR, Mass Spectrometry).',
+                'Multistep Synthesis Strategies.',
+            ]
+        }
+    },
     'data-structures': {
-    id: 'data-structures',
-    title: 'Data Structures',
-    description: 'Understand arrays, linked lists, stacks, queues, trees, and graphs.',
-    content: {
-      Beginner: [ /* ... content ... */ 'Introduction: What are Data Structures? Why are they important?', 'Arrays: Definition, Operations, Time Complexity.', 'Linked Lists: Singly Linked Lists, Doubly Linked Lists.',],
-      Intermediate: [ /* ... content ... */ 'Stacks: LIFO Principle, Operations (Push, Pop).', 'Queues: FIFO Principle, Operations (Enqueue, Dequeue).', 'Trees: Binary Trees, Binary Search Trees (BST).', 'Tree Traversal: Inorder, Preorder, Postorder.',],
-      Advanced: [ /* ... content ... */ 'Graphs: Representation (Adjacency Matrix, Adjacency List).', 'Graph Traversal: Breadth-First Search (BFS), Depth-First Search (DFS).', 'Hash Tables: Collision Resolution Techniques.', 'Heaps: Min-Heap, Max-Heap.',],
+        id: 'data-structures',
+        title: 'Data Structures',
+        description: 'Understand arrays, linked lists, stacks, queues, trees, and graphs.',
+        content: {
+            Beginner: [
+                'Introduction: What are Data Structures? Why are they important?',
+                'Algorithm Analysis Basics: Big O Notation.',
+                'Arrays: Definition, Operations, Time Complexity.',
+                'Linked Lists: Singly Linked Lists - Concept and Implementation.',
+                'Introduction to Recursion.',
+            ],
+            Intermediate: [
+                'Stacks: LIFO Principle, Operations (Push, Pop), Applications.',
+                'Queues: FIFO Principle, Operations (Enqueue, Dequeue), Applications.',
+                'Doubly Linked Lists and Circular Linked Lists.',
+                'Trees: Terminology, Binary Trees, Binary Search Trees (BST).',
+                'Tree Traversal Algorithms: Inorder, Preorder, Postorder.',
+            ],
+            Advanced: [
+                'Balanced Trees: AVL Trees or Red-Black Trees (Concepts).',
+                'Heaps: Min-Heap, Max-Heap, Heap Sort.',
+                'Hash Tables: Hash Functions, Collision Resolution Techniques (Chaining, Open Addressing).',
+                'Graphs: Representation (Adjacency Matrix, Adjacency List).',
+                'Graph Traversal Algorithms: Breadth-First Search (BFS), Depth-First Search (DFS).',
+                'Introduction to Dynamic Programming.',
+            ]
+        }
     },
-  },
-   'linear-algebra': {
-    id: 'linear-algebra',
-    title: 'Linear Algebra',
-    description: 'Introduction to vectors, matrices, systems of linear equations, and eigenvalues.',
-    content: {
-      Beginner: [ /* ... content ... */ 'Introduction to Vectors: Geometric Interpretation, Operations.', 'Matrices: Definition, Types, Operations (Addition, Multiplication).', 'Systems of Linear Equations: Gaussian Elimination.',],
-      Intermediate: [ /* ... content ... */ 'Vector Spaces and Subspaces.', 'Linear Independence, Basis, Dimension.', 'Determinants: Properties and Calculation.', ],
-      Advanced: [ /* ... content ... */ 'Eigenvalues and Eigenvectors.', 'Diagonalization.', 'Inner Product Spaces, Orthogonality.', 'Linear Transformations.',],
+    'linear-algebra': {
+        id: 'linear-algebra',
+        title: 'Linear Algebra',
+        description: 'Introduction to vectors, matrices, systems of linear equations, and eigenvalues.',
+        content: {
+            Beginner: [
+                'Introduction to Vectors: Geometric Interpretation, Vector Operations.',
+                'Matrices: Definition, Types, Matrix Operations (Addition, Scalar Multiplication).',
+                'Matrix Multiplication: Definition and Properties.',
+                'Systems of Linear Equations: Representing Systems with Matrices.',
+                'Gaussian Elimination and Row Echelon Form.',
+            ],
+            Intermediate: [
+                'Vector Spaces and Subspaces: Definitions and Examples.',
+                'Linear Independence, Basis, and Dimension.',
+                'Determinants: Properties and Calculation Methods.',
+                'Inverse Matrices: Finding Inverses, Properties.',
+                'Applications: Solving Systems using Inverses and Determinants.',
+            ],
+            Advanced: [
+                'Eigenvalues and Eigenvectors: Definition and Calculation.',
+                'Diagonalization of Matrices.',
+                'Inner Product Spaces: Dot Product, Orthogonality.',
+                'Gram-Schmidt Process.',
+                'Linear Transformations: Matrix Representation, Kernel, Range.',
+                'Applications in Computer Graphics or Data Analysis.',
+            ]
+        }
     },
-  },
-   'web-development-basics': {
-    id: 'web-development-basics',
-    title: 'Web Development Basics',
-    description: 'Learn HTML, CSS, and JavaScript fundamentals for building web pages.',
-    content: {
-      Beginner: [ /* ... content ... */ 'Introduction to the Web: How Websites Work.', 'HTML Fundamentals: Tags, Elements, Attributes, Structure.', 'Basic HTML Elements: Headings, Paragraphs, Lists, Links, Images.', 'Introduction to CSS: Selectors, Properties, Values.',],
-      Intermediate: [ /* ... content ... */ 'CSS Box Model: Margin, Border, Padding, Content.', 'CSS Layouts: Flexbox basics, Grid basics.', 'Styling Text and Fonts.', 'Introduction to JavaScript: Variables, Data Types, Operators.',],
-      Advanced: [ /* ... content ... */ 'JavaScript Functions and Control Flow.', 'DOM Manipulation Basics.', 'Event Handling.', 'Responsive Design Principles.', 'Introduction to Version Control (Git).',],
+    'web-development-basics': {
+        id: 'web-development-basics',
+        title: 'Web Development Basics',
+        description: 'Learn HTML, CSS, and JavaScript fundamentals for building web pages.',
+        content: {
+            Beginner: [
+                'Introduction to the Web: How Websites Work (Client-Server Model).',
+                'HTML Fundamentals: Tags, Elements, Attributes, Document Structure.',
+                'Basic HTML Elements: Headings, Paragraphs, Lists, Links, Images.',
+                'Semantic HTML: Understanding tags like <header>, <nav>, <main>, <footer>.',
+                'Introduction to CSS: Selectors (element, class, ID), Properties, Values.',
+            ],
+            Intermediate: [
+                'CSS Box Model: Margin, Border, Padding, Content.',
+                'CSS Layouts: Flexbox Basics - Containers and Items.',
+                'CSS Selectors: Combinators, Pseudo-classes, Pseudo-elements.',
+                'Styling Text and Fonts: Web Fonts.',
+                'Introduction to JavaScript: Variables (var, let, const), Data Types, Operators.',
+            ],
+            Advanced: [
+                'JavaScript Control Flow: Conditional Statements (if/else), Loops (for, while).',
+                'JavaScript Functions: Defining and Calling Functions.',
+                'DOM Manipulation Basics: Selecting Elements, Changing Content/Styles.',
+                'Event Handling: Responding to User Interactions (click, hover).',
+                'Introduction to Responsive Design Principles and Media Queries.',
+                'Basic Version Control with Git.',
+            ]
+        }
     },
-  },
 };
+
 
 const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics'; // Key for the summary list
 const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
@@ -172,15 +287,35 @@ const getTopicsSummaryFromStorage = (): TopicSummary[] => {
      const stored = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
      // Important: Only initialize if storage is truly empty (null)
      if (stored === null) {
-         localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify([])); // Initialize with empty array
-         console.log('Initialized empty topic summary list in localStorage.');
-         return [];
+         // Initialize with default topics summary if details are also default
+         const defaultSummary = Object.values(DEFAULT_TOPIC_DETAILS).map(d => ({
+             id: d.id,
+             title: d.title,
+             level: 'Beginner' as 'Beginner', // Default level for summary
+             description: d.description ?? 'Default description',
+         }));
+         localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(defaultSummary));
+         console.log('Initialized topic summary list in localStorage with defaults.');
+         return defaultSummary;
      }
      return stored ? JSON.parse(stored) : [];
    } catch (error) {
      console.error("Error getting topics summary from localStorage:", error);
      return [];
    }
+};
+
+// Function to delete progress data for a topic
+const deleteProgressData = (topicId: string) => {
+  if (typeof window !== 'undefined') {
+    const progressKey = `eduai-progress-${topicId}`;
+    try {
+      localStorage.removeItem(progressKey);
+      console.log(`Removed progress data for topic: ${topicId}`);
+    } catch (error) {
+      console.error(`Error removing progress data for ${topicId}:`, error);
+    }
+  }
 };
 
 
@@ -207,27 +342,24 @@ export default function TopicPage() {
 
   const loadTopicData = useCallback(() => {
     setLoading(true);
-    // Simulate fetching topic data
-    setTimeout(() => {
-      const allDetails = getTopicDetailsFromStorage();
-      const data = allDetails[topicId];
-      let level: 'Beginner' | 'Intermediate' | 'Advanced' | null = null;
+    // Fetch topic data and level
+    const allDetails = getTopicDetailsFromStorage();
+    const data = allDetails[topicId];
+    let level: 'Beginner' | 'Intermediate' | 'Advanced' | null = null;
 
-      if (data) {
-        // Get level from summary as detail doesn't store it
-        const summaries = getTopicsSummaryFromStorage();
-        const summary = summaries.find(s => s.id === topicId);
-        // Set level from summary, default to Beginner if somehow missing
-        level = summary?.level ?? 'Beginner';
-      } else {
-        console.log(`Topic details not found for ID: ${topicId}`);
-      }
+    if (data) {
+      // Get level from summary
+      const summaries = getTopicsSummaryFromStorage();
+      const summary = summaries.find(s => s.id === topicId);
+      level = summary?.level ?? 'Beginner'; // Default if summary missing
+    } else {
+      console.log(`Topic details not found for ID: ${topicId}`);
+    }
 
-      setTopicData(data || null);
-      setTopicLevel(level); // Set the determined level
+    setTopicData(data || null);
+    setTopicLevel(level);
 
-      setLoading(false);
-    }, 500); // Simulate network delay
+    setLoading(false);
   }, [topicId]);
 
 
@@ -291,16 +423,16 @@ export default function TopicPage() {
             numQuestions: numQuestions,
         };
         // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // await new Promise(resolve => setTimeout(resolve, 1500));
         // Generate dummy quiz data if API key is invalid or for simulation
-        const output: GenerateQuizOutput = {
-          quiz: Array.from({ length: numQuestions }, (_, i) => ({
-            question: `Simulated Question ${i + 1} for ${topicData.title} (${topicLevel})?`,
-            options: [`Option A${i}`, `Option B${i}`, `Option C${i}`, `Option D${i}`],
-            correctAnswer: `Option B${i}`, // Example correct answer
-          }))
-        };
-        // const output: GenerateQuizOutput = await generateQuiz(input); // Uncomment for actual API call
+        // const output: GenerateQuizOutput = {
+        //   quiz: Array.from({ length: numQuestions }, (_, i) => ({
+        //     question: `Simulated Question ${i + 1} for ${topicData.title} (${topicLevel})?`,
+        //     options: [`Option A${i}`, `Option B${i}`, `Option C${i}`, `Option D${i}`],
+        //     correctAnswer: `Option B${i}`, // Example correct answer
+        //   }))
+        // };
+        const output: GenerateQuizOutput = await generateQuiz(input); // Use actual API call
 
         if (output.quiz && output.quiz.length > 0) {
             setQuizQuestions(output.quiz);
@@ -406,6 +538,10 @@ export default function TopicPage() {
     const updatedSummary = currentSummary.filter(topic => topic.id !== topicId);
     saveTopicsSummaryToStorage(updatedSummary); // This will trigger the storage event
 
+    // 3. Delete progress data
+    deleteProgressData(topicId);
+
+
     toast({
       title: 'Topic Deleted',
       description: `"${topicData.title}" has been deleted.`,
@@ -427,31 +563,31 @@ export default function TopicPage() {
              <Skeleton className="h-8 w-8 rounded-md" />
              <Skeleton className="h-8 w-48 rounded-md" />
            </div>
-           <div className="flex items-center gap-2"> {/* Reduced gap */}
+           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0"> {/* Adjusted gap */}
              <Skeleton className="h-8 w-8 rounded-md" /> {/* Edit Skeleton */}
              <Skeleton className="h-8 w-8 rounded-md" /> {/* Delete Skeleton */}
              <Skeleton className="h-8 w-8 rounded-full" /> {/* Theme Skeleton */}
-             <Skeleton className="h-8 w-28 rounded-md" /> {/* Ask AI Skeleton */}
+             <Skeleton className="h-9 w-20 sm:w-28 rounded-md" /> {/* Ask AI Skeleton */}
            </div>
         </header>
         {/* Skeleton Content */}
         <div className="p-4 space-y-4 flex-grow">
-            <Skeleton className="h-10 w-24 mb-4 rounded-md" /> {/* Level Badge Skeleton */}
-            <Card>
-              <CardHeader>
-                 <Skeleton className="h-6 w-1/3 mb-2 rounded-md"/>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Skeleton className="h-4 w-full rounded-md"/>
-                <Skeleton className="h-4 w-full rounded-md"/>
-                <Skeleton className="h-4 w-5/6 rounded-md"/>
-                <Skeleton className="h-4 w-full rounded-md"/>
-                <Skeleton className="h-4 w-4/6 rounded-md"/>
-              </CardContent>
-               <CardFooter>
-                 <Skeleton className="h-10 w-36 rounded-md"/> {/* Skeleton for Quiz button */}
-               </CardFooter>
-            </Card>
+            <Skeleton className="h-6 w-24 mb-4 rounded-md" /> {/* Level Badge Skeleton */}
+             {/* Skeleton for TopicContentDisplay */}
+             <div className="space-y-4">
+                 <Skeleton className="h-10 w-full rounded-md" />
+                 <div className="p-4 space-y-3">
+                     <Skeleton className="h-4 w-full rounded-md"/>
+                     <Skeleton className="h-4 w-5/6 rounded-md"/>
+                     <Skeleton className="h-4 w-full rounded-md"/>
+                 </div>
+                  <Skeleton className="h-10 w-full rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+             </div>
+            {/* Skeleton for Quiz button */}
+            <div className="mt-6">
+                 <Skeleton className="h-10 w-36 rounded-md"/>
+            </div>
         </div>
          <footer className="p-4 mt-auto text-center">
            <Skeleton className="h-4 w-1/2 mx-auto rounded-md"/>
@@ -474,8 +610,6 @@ export default function TopicPage() {
     );
   }
 
-  // Get content for the specific level
-  const levelContent = topicData.content?.[topicLevel] ?? [];
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
@@ -511,7 +645,7 @@ export default function TopicPage() {
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete the topic
-                    "{topicData.title}".
+                    "{topicData.title}" and all associated progress.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -537,32 +671,27 @@ export default function TopicPage() {
          </div>
       </header>
 
-      <section className="p-4 flex-grow">
+      <section className="p-4 flex-grow space-y-6">
           {/* Display Topic Level Badge */}
           <div className="mb-4">
               <span className="level-badge">{topicLevel}</span>
           </div>
 
-          {/* Display Content based on topicLevel */}
-           <Card>
-             <CardHeader>
-               {/* Removed CardTitle as level is now a badge */}
-             </CardHeader>
-             <CardContent className="space-y-2 pt-0"> {/* Added pt-0 */}
-               {levelContent.length > 0 ? (
-                 levelContent.map((item, index) => (
-                   <p key={index} className="text-foreground leading-relaxed">{item}</p>
-                 ))
-               ) : (
-                 <p className="text-muted-foreground">No content available for this topic at the {topicLevel} level. It might be under construction!</p>
-               )}
-             </CardContent>
-             <CardFooter>
+          {/* Display AI-Generated Content with Progress Tracking */}
+          <TopicContentDisplay
+             topicId={topicId}
+             content={topicData.content}
+             initialLevel={topicLevel} // Pass the main level to open by default
+          />
+
+
+           {/* Quiz Button - Placed below the content */}
+           <div className="mt-6">
                <Button variant="outline" onClick={handleOpenQuizConfirmation} disabled={isGeneratingQuiz}>
                  {isGeneratingQuiz ? (
                    <>
                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                     Generating...
+                     Generating Quiz...
                    </>
                  ) : (
                    <>
@@ -570,8 +699,7 @@ export default function TopicPage() {
                    </>
                  )}
                </Button>
-             </CardFooter>
-           </Card>
+           </div>
       </section>
 
       {/* AI Tutor Drawer/Modal */}
