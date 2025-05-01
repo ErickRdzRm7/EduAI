@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,38 +40,53 @@ export default function QuizDisplay({
   level,
 }: QuizDisplayProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, AnswerState>>({});
+  // Use an array for answers, index corresponds to question index
+  const [answers, setAnswers] = useState<AnswerState[]>([]);
   const [showResults, setShowResults] = useState(false);
+
+  // Initialize answers state when questions change or dialog opens
+  useEffect(() => {
+    if (isOpen) {
+        setAnswers(Array(questions.length).fill({ selectedOption: null, isCorrect: null }));
+        setCurrentQuestionIndex(0);
+        setShowResults(false);
+    }
+  }, [isOpen, questions]);
+
 
   const currentQuestion = questions[currentQuestionIndex];
   const answerStateForCurrentQuestion = answers[currentQuestionIndex];
+  // Check if the answer for the *current* question has been submitted (isCorrect is not null)
   const isAnswerSubmitted = answerStateForCurrentQuestion?.isCorrect !== null;
 
   const handleOptionChange = (value: string) => {
-    // Only allow changing the answer if it hasn't been submitted yet
+    // Only allow changing the answer if it hasn't been submitted yet for the current question
     if (isAnswerSubmitted) return;
 
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestionIndex]: {
-        selectedOption: value,
-        isCorrect: null, // Reset correctness check until submission
-      },
-    }));
+    setAnswers((prevAnswers) => {
+        const newAnswers = [...prevAnswers];
+        newAnswers[currentQuestionIndex] = {
+            selectedOption: value,
+            isCorrect: null, // Reset correctness check until submission
+        };
+        return newAnswers;
+    });
   };
 
   const handleSubmitAnswer = () => {
     const selected = answerStateForCurrentQuestion?.selectedOption;
-    if (!selected || isAnswerSubmitted) return; // Don't submit if nothing selected or already submitted
+    // Don't submit if nothing selected or already submitted for the current question
+    if (!selected || isAnswerSubmitted) return;
 
     const isCorrect = selected === currentQuestion.correctAnswer;
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestionIndex]: {
-        ...prev[currentQuestionIndex],
-        isCorrect: isCorrect,
-      },
-    }));
+    setAnswers((prevAnswers) => {
+        const newAnswers = [...prevAnswers];
+        newAnswers[currentQuestionIndex] = {
+            ...newAnswers[currentQuestionIndex], // Keep selectedOption
+            isCorrect: isCorrect,
+        };
+        return newAnswers;
+    });
   };
 
   const handleNextQuestion = () => {
@@ -84,20 +99,28 @@ export default function QuizDisplay({
   };
 
   const handleRestartQuiz = () => {
+     // Re-initialize state
+     setAnswers(Array(questions.length).fill({ selectedOption: null, isCorrect: null }));
      setCurrentQuestionIndex(0);
-     setAnswers({});
      setShowResults(false);
   };
 
    const calculateScore = () => {
-    return Object.values(answers).filter(a => a.isCorrect === true).length;
+    // Count correct answers from the state array
+    return answers.filter(a => a.isCorrect === true).length;
   };
 
   const score = calculateScore();
 
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if (!open) {
+            // Reset state when closing the dialog externally
+            handleRestartQuiz();
+            onClose();
+        }
+    }}>
       <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>
@@ -108,45 +131,49 @@ export default function QuizDisplay({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-grow pr-6 -mr-6"> {/* Add padding-right to ScrollArea and negative margin to DialogContent */}
+        {/* Use key to force remount ScrollArea content when question changes, ensuring scroll position resets */}
+        <ScrollArea className="flex-grow pr-6 -mr-6" key={currentQuestionIndex}>
           <div className="py-4 space-y-6">
             {!showResults && currentQuestion && (
-              <div key={currentQuestionIndex}>
+              <div>
                 <p className="font-semibold mb-4">
                   Question {currentQuestionIndex + 1} of {questions.length}
                 </p>
                 <p className="mb-4">{currentQuestion.question}</p>
                 <RadioGroup
                   value={answerStateForCurrentQuestion?.selectedOption ?? undefined}
-                  onValueChange={handleOptionChange} // Use the handler defined above
+                  onValueChange={handleOptionChange}
                   className="space-y-2"
-                  // RadioGroup itself doesn't need to be disabled, handle interaction on items/labels
                 >
                   {currentQuestion.options.map((option, index) => {
                     const isSelected = answerStateForCurrentQuestion?.selectedOption === option;
                     const isCorrectAnswer = currentQuestion.correctAnswer === option;
-                    const showFeedback = isAnswerSubmitted;
+                    const showFeedback = isAnswerSubmitted; // Show feedback only after submitting
 
                     return (
-                        // Use a Label as the clickable container for better accessibility
                         <Label
                             key={index}
-                            htmlFor={`q${currentQuestionIndex}-o${index}`} // Link label to radio item
+                            htmlFor={`q${currentQuestionIndex}-o${index}`}
                             className={cn(
                               "flex items-center space-x-3 rounded-md border p-3 transition-colors",
-                              showFeedback && isCorrectAnswer && "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400", // Style correct answer
-                              showFeedback && isSelected && !isCorrectAnswer && "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400", // Style incorrect selection
-                              !showFeedback && isSelected && "border-primary bg-primary/5", // Style selected before submit
-                              isAnswerSubmitted ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-accent/50" // Adjust cursor and hover based on submitted state
+                              // Correct answer styling (only when feedback is shown)
+                              showFeedback && isCorrectAnswer && "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400",
+                              // Incorrectly selected answer styling (only when feedback is shown)
+                              showFeedback && isSelected && !isCorrectAnswer && "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400",
+                              // Style selected before submit (if not showing feedback yet)
+                              !showFeedback && isSelected && "border-primary bg-primary/5",
+                              // Cursor and hover state based on whether the answer is submitted
+                              isAnswerSubmitted ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-accent/50"
                             )}
                         >
                             <RadioGroupItem
                                 value={option}
                                 id={`q${currentQuestionIndex}-o${index}`}
                                 disabled={isAnswerSubmitted} // Disable radio button after submission
-                                className="shrink-0" // Prevent shrinking
+                                className="shrink-0"
+                                aria-label={option} // Add aria-label for screen readers
                             />
-                            <span className="flex-1"> {/* Text part of the label */}
+                            <span className="flex-1">
                               {option}
                             </span>
                             {/* Feedback Icons */}
@@ -168,7 +195,6 @@ export default function QuizDisplay({
                     <p className="text-muted-foreground">
                         {score === questions.length ? "Excellent work!" : score >= questions.length / 2 ? "Good job!" : "Keep practicing!"}
                     </p>
-                    {/* Optional: Add a button to review answers */}
                     <Button onClick={handleRestartQuiz}>Take Quiz Again</Button>
                 </div>
             )}
@@ -182,13 +208,15 @@ export default function QuizDisplay({
                     <Button
                         variant="outline"
                         onClick={handleSubmitAnswer}
-                        disabled={!answerStateForCurrentQuestion?.selectedOption || isAnswerSubmitted} // Disable submit if no option selected or already submitted
+                        // Disable submit if no option selected OR if the answer is already submitted for the current question
+                        disabled={!answerStateForCurrentQuestion?.selectedOption || isAnswerSubmitted}
                     >
                         Submit Answer
                     </Button>
                     <Button
                         onClick={handleNextQuestion}
-                         disabled={!isAnswerSubmitted} // Enable Next/Results only after submitting the current answer
+                         // Enable Next/Results only after submitting the current answer
+                         disabled={!isAnswerSubmitted}
                     >
                         {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Show Results'}
                     </Button>
@@ -196,7 +224,10 @@ export default function QuizDisplay({
             )}
              {showResults && (
                 <DialogClose asChild>
-                    <Button variant="outline">Close</Button>
+                    <Button variant="outline" onClick={() => {
+                         // Explicitly call onClose which should handle state reset via useEffect
+                         onClose();
+                    }}>Close</Button>
                  </DialogClose>
             )}
 
