@@ -28,79 +28,50 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { useDebounce } from '@/hooks/use-debounce'; // Import useDebounce
 
-// --- Topic Data Management ---
+// --- Topic Data Structure (Summary derived from Detail) ---
 
-// Define the structure for a topic
-interface Topic {
+interface TopicSummary {
   id: string;
   title: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
   description: string;
 }
 
-// Default topics only used to initialize localStorage if it's empty
-const DEFAULT_TOPICS: Topic[] = [
-  {
-    id: 'java-programming',
-    title: 'Java Programming',
-    level: 'Beginner',
-    description: 'Learn the fundamentals of Java syntax, object-oriented programming, and core libraries.',
-  },
-  {
-    id: 'intermediate-mathematics',
-    title: 'Intermediate Mathematics',
-    level: 'Intermediate',
-    description: 'Explore calculus concepts like limits, derivatives, integrals, and their applications.',
-  },
-  {
-    id: 'organic-chemistry-principles',
-    title: 'Organic Chemistry Principles',
-    level: 'Advanced',
-    description: 'Delve into the structure, properties, reactions, and synthesis of organic compounds.',
-  },
-  {
-    id: 'data-structures',
-    title: 'Data Structures',
-    level: 'Intermediate',
-    description: 'Understand arrays, linked lists, stacks, queues, trees, and graphs.',
-  },
-  {
-    id: 'linear-algebra',
-    title: 'Linear Algebra',
-    level: 'Beginner',
-    description: 'Introduction to vectors, matrices, systems of linear equations, and eigenvalues.',
-  },
-  {
-    id: 'web-development-basics',
-    title: 'Web Development Basics',
-    level: 'Beginner',
-    description: 'Learn HTML, CSS, and JavaScript fundamentals for building web pages.',
-  },
-];
+// Detail structure needed for deriving summaries
+interface TopicDetail {
+  id: string;
+  title: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  description?: string;
+  content: Record<string, string[]>;
+}
 
-const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics';
+const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
 
-// Function to get topics from localStorage
-const getTopicsFromStorage = (): Topic[] => {
+// Function to get topic details from localStorage
+const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
   if (typeof window === 'undefined') {
-    return []; // Return empty array during SSR or if window is unavailable
+    return {}; // Return empty object during SSR or if window is unavailable
   }
   try {
-    const storedTopics = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
-    if (storedTopics) {
-      return JSON.parse(storedTopics);
-    } else {
-      // Initialize localStorage ONLY if it's empty
-      localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(DEFAULT_TOPICS));
-      console.log('Initialized localStorage with default topics.');
-      return DEFAULT_TOPICS;
-    }
+    const storedDetails = localStorage.getItem(LOCAL_STORAGE_DETAILS_KEY);
+    return storedDetails ? JSON.parse(storedDetails) : {};
   } catch (error) {
-    console.error("Error accessing or parsing localStorage for topics:", error);
-    // Don't return defaults here, return empty array to avoid overriding existing data accidentally
-    return []; // Fallback to empty on error
+    console.error("Error accessing or parsing localStorage for topic details:", error);
+    return {}; // Fallback to empty on error
   }
 };
+
+// Function to derive TopicSummary list from TopicDetail map
+const deriveTopicsSummaryFromDetails = (details: Record<string, TopicDetail>): TopicSummary[] => {
+    return Object.values(details).map(detail => ({
+        id: detail.id,
+        title: detail.title,
+        level: detail.level, // Get level directly from detail
+        description: detail.description ?? 'No description provided.', // Use description from detail
+    }));
+};
+
 
 // --- End Topic Data Management ---
 
@@ -206,19 +177,21 @@ const EduAILogo = () => (
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [topics, setTopics] = useState<Topic[]>([]); // State for topics
+  const [topics, setTopics] = useState<TopicSummary[]>([]); // Initialize with empty array
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [searchTerm, setSearchTerm] = useState(''); // State for search term
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounce search term
   const router = useRouter();
 
-  // Function to load topics
+  // Function to load topic summaries derived from details in localStorage
   const loadTopics = useCallback(() => {
     setTopicsLoading(true);
-    const loadedTopics = getTopicsFromStorage();
-    setTopics(loadedTopics);
+    const details = getTopicDetailsFromStorage();
+    const loadedSummaries = deriveTopicsSummaryFromDetails(details);
+    setTopics(loadedSummaries);
     setTopicsLoading(false);
+    console.log('Loaded topic summaries derived from details.');
   }, []);
 
   // Authentication check effect
@@ -288,11 +261,11 @@ export default function Home() {
     }
   }, [authLoading, user, loadTopics]);
 
-  // Effect to reload topics if localStorage changes (e.g., after creation/deletion)
+  // Effect to reload topics if DETAIL storage changes (since summary is derived)
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === LOCAL_STORAGE_TOPICS_KEY) {
-        console.log('Detected storage change for topics. Reloading...');
+      if (event.key === LOCAL_STORAGE_DETAILS_KEY) {
+        console.log('Detected storage change for topic details. Reloading summaries...');
         loadTopics();
       }
     };
@@ -314,6 +287,10 @@ export default function Home() {
       localStorage.removeItem('userName'); // Clear user-specific data
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userImageUrl');
+      // Optionally clear all EduAI related storage if desired
+      // Object.keys(localStorage)
+      //   .filter(key => key.startsWith('eduai-'))
+      //   .forEach(key => localStorage.removeItem(key));
     } catch (error) {
         console.error("Error accessing localStorage:", error);
     }
@@ -406,7 +383,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {topicsLoading ? (
             // Show skeletons based on a fixed number or default topics length
-            Array.from({ length: 6 }).map((_, index) => <TopicCardSkeleton key={index} />)
+            Array.from({ length: 3 }).map((_, index) => <TopicCardSkeleton key={index} />) // Show fewer skeletons as there are no defaults
           ) : filteredTopics.length > 0 ? (
              filteredTopics.map((topic) => (
                 <TopicCard
@@ -420,7 +397,7 @@ export default function Home() {
           ) : (
               <div className="col-span-1 md:col-span-2 lg:col-span-3">
                  <p className="empty-state-message">
-                    {debouncedSearchTerm ? `No topics found for "${debouncedSearchTerm}". Try requesting it!` : "No topics available. Request one to get started!"}
+                    {debouncedSearchTerm ? `No topics found for "${debouncedSearchTerm}". Try requesting one!` : "No topics created yet. Request one to get started!"}
                  </p>
               </div>
           )}

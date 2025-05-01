@@ -38,200 +38,15 @@ import TopicContentDisplay from '@/components/topic-content-display'; // Import 
 
 // --- Topic Data Management ---
 
-interface TopicSummary { // Define TopicSummary for clarity
-  id: string;
-  title: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory here
-  description: string;
-}
-
 interface TopicDetail {
   id: string;
   title: string;
-  // Level is not stored here, it's derived from TopicSummary
+  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory here
   description?: string; // Description might be optional
   content: Record<string, string[]>; // Beginner, Intermediate, Advanced content arrays of strings
 }
 
-// Default topics structure matching TopicDetail - Only used to initialize localStorage if empty
-const DEFAULT_TOPIC_DETAILS: Record<string, TopicDetail> = {
-  'java-programming': {
-    id: 'java-programming',
-    title: 'Java Programming',
-    description: 'Learn the fundamentals of Java syntax, object-oriented programming, and core libraries.',
-    content: {
-        Beginner: [
-            'Introduction to Java: What is Java? History, Features.',
-            'Setting up the Environment: JDK Installation, IDE Setup (IntelliJ, Eclipse).',
-            'Basic Syntax: Variables, Data Types, Operators.',
-            'Control Flow: If-else statements, Loops (for, while).',
-            'First Java Program: Hello World!',
-        ],
-        Intermediate: [
-            'Object-Oriented Programming (OOP): Classes, Objects, Inheritance, Polymorphism, Encapsulation.',
-            'Methods: Defining and Calling Methods.',
-            'Arrays and Collections: ArrayList, HashMap.',
-            'Exception Handling: Try-catch blocks.',
-            'Working with Strings.',
-        ],
-        Advanced: [
-            'Generics: Understanding Type Parameters.',
-            'Multithreading: Creating and Managing Threads.',
-            'File I/O: Reading and Writing Files.',
-            'Introduction to Java Frameworks (Spring Boot).',
-            'Lambda Expressions and Streams.',
-            'Advanced Design Patterns.',
-        ]
-    },
-  },
-    'intermediate-mathematics': {
-        id: 'intermediate-mathematics',
-        title: 'Intermediate Mathematics',
-        description: 'Explore calculus concepts like limits, derivatives, integrals, and their applications.',
-        content: {
-            Beginner: [
-                'Review of Algebra: Equations, Inequalities.',
-                'Functions: Domain, Range, Types of Functions.',
-                'Introduction to Limits: Definition and Properties.',
-                'Basic Limit Calculations.',
-                'Continuity.',
-            ],
-            Intermediate: [
-                'Derivatives: Definition, Rules (Power, Product, Quotient, Chain).',
-                'Applications of Derivatives: Rate of Change, Optimization.',
-                'Integrals: Definite and Indefinite Integrals.',
-                'Fundamental Theorem of Calculus.',
-                'Techniques of Integration (Substitution).',
-            ],
-            Advanced: [
-                'Further Integration Techniques (Integration by Parts, Partial Fractions).',
-                'Sequences and Series: Convergence Tests.',
-                'Introduction to Differential Equations: First Order Equations.',
-                'Multivariable Calculus Introduction: Partial Derivatives.',
-                'Applications in Physics and Engineering.',
-            ]
-        }
-    },
-    'organic-chemistry-principles': {
-        id: 'organic-chemistry-principles',
-        title: 'Organic Chemistry Principles',
-        description: 'Delve into the structure, properties, reactions, and synthesis of organic compounds.',
-        content: {
-            Beginner: [
-                'Introduction to Organic Chemistry: Bonding, Lewis Structures, Hybridization.',
-                'Functional Groups: Alkanes, Alkenes, Alkynes, Alkyl Halides.',
-                'Basic Nomenclature: IUPAC Naming for simple compounds.',
-                'Introduction to Isomerism: Constitutional Isomers.',
-                'Acid-Base Chemistry in Organic Context.',
-            ],
-            Intermediate: [
-                'Stereochemistry: Chirality, Enantiomers, Diastereomers, Meso Compounds.',
-                'Alcohols, Ethers, Epoxides: Properties and Reactions.',
-                'Introduction to Reaction Mechanisms: SN1, SN2, E1, E2 Reactions.',
-                'Spectroscopy Basics: IR Spectroscopy, Introduction to NMR.',
-                'Reactions of Alkenes and Alkynes.',
-            ],
-            Advanced: [
-                'Aromaticity: Huckel\'s Rule, Electrophilic Aromatic Substitution (EAS).',
-                'Carbonyl Chemistry: Aldehydes, Ketones - Reactions and Synthesis.',
-                'Carboxylic Acids and Derivatives: Properties and Reactions.',
-                'Amines: Properties and Synthesis.',
-                'Advanced Spectroscopic Analysis (NMR, Mass Spectrometry).',
-                'Multistep Synthesis Strategies.',
-            ]
-        }
-    },
-    'data-structures': {
-        id: 'data-structures',
-        title: 'Data Structures',
-        description: 'Understand arrays, linked lists, stacks, queues, trees, and graphs.',
-        content: {
-            Beginner: [
-                'Introduction: What are Data Structures? Why are they important?',
-                'Algorithm Analysis Basics: Big O Notation.',
-                'Arrays: Definition, Operations, Time Complexity.',
-                'Linked Lists: Singly Linked Lists - Concept and Implementation.',
-                'Introduction to Recursion.',
-            ],
-            Intermediate: [
-                'Stacks: LIFO Principle, Operations (Push, Pop), Applications.',
-                'Queues: FIFO Principle, Operations (Enqueue, Dequeue), Applications.',
-                'Doubly Linked Lists and Circular Linked Lists.',
-                'Trees: Terminology, Binary Trees, Binary Search Trees (BST).',
-                'Tree Traversal Algorithms: Inorder, Preorder, Postorder.',
-            ],
-            Advanced: [
-                'Balanced Trees: AVL Trees or Red-Black Trees (Concepts).',
-                'Heaps: Min-Heap, Max-Heap, Heap Sort.',
-                'Hash Tables: Hash Functions, Collision Resolution Techniques (Chaining, Open Addressing).',
-                'Graphs: Representation (Adjacency Matrix, Adjacency List).',
-                'Graph Traversal Algorithms: Breadth-First Search (BFS), Depth-First Search (DFS).',
-                'Introduction to Dynamic Programming.',
-            ]
-        }
-    },
-    'linear-algebra': {
-        id: 'linear-algebra',
-        title: 'Linear Algebra',
-        description: 'Introduction to vectors, matrices, systems of linear equations, and eigenvalues.',
-        content: {
-            Beginner: [
-                'Introduction to Vectors: Geometric Interpretation, Vector Operations.',
-                'Matrices: Definition, Types, Matrix Operations (Addition, Scalar Multiplication).',
-                'Matrix Multiplication: Definition and Properties.',
-                'Systems of Linear Equations: Representing Systems with Matrices.',
-                'Gaussian Elimination and Row Echelon Form.',
-            ],
-            Intermediate: [
-                'Vector Spaces and Subspaces: Definitions and Examples.',
-                'Linear Independence, Basis, and Dimension.',
-                'Determinants: Properties and Calculation Methods.',
-                'Inverse Matrices: Finding Inverses, Properties.',
-                'Applications: Solving Systems using Inverses and Determinants.',
-            ],
-            Advanced: [
-                'Eigenvalues and Eigenvectors: Definition and Calculation.',
-                'Diagonalization of Matrices.',
-                'Inner Product Spaces: Dot Product, Orthogonality.',
-                'Gram-Schmidt Process.',
-                'Linear Transformations: Matrix Representation, Kernel, Range.',
-                'Applications in Computer Graphics or Data Analysis.',
-            ]
-        }
-    },
-    'web-development-basics': {
-        id: 'web-development-basics',
-        title: 'Web Development Basics',
-        description: 'Learn HTML, CSS, and JavaScript fundamentals for building web pages.',
-        content: {
-            Beginner: [
-                'Introduction to the Web: How Websites Work (Client-Server Model).',
-                'HTML Fundamentals: Tags, Elements, Attributes, Document Structure.',
-                'Basic HTML Elements: Headings, Paragraphs, Lists, Links, Images.',
-                'Semantic HTML: Understanding tags like <header>, <nav>, <main>, <footer>.',
-                'Introduction to CSS: Selectors (element, class, ID), Properties, Values.',
-            ],
-            Intermediate: [
-                'CSS Box Model: Margin, Border, Padding, Content.',
-                'CSS Layouts: Flexbox Basics - Containers and Items.',
-                'CSS Selectors: Combinators, Pseudo-classes, Pseudo-elements.',
-                'Styling Text and Fonts: Web Fonts.',
-                'Introduction to JavaScript: Variables (var, let, const), Data Types, Operators.',
-            ],
-            Advanced: [
-                'JavaScript Control Flow: Conditional Statements (if/else), Loops (for, while).',
-                'JavaScript Functions: Defining and Calling Functions.',
-                'DOM Manipulation Basics: Selecting Elements, Changing Content/Styles.',
-                'Event Handling: Responding to User Interactions (click, hover).',
-                'Introduction to Responsive Design Principles and Media Queries.',
-                'Basic Version Control with Git.',
-            ]
-        }
-    },
-};
 
-
-const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics'; // Key for the summary list
 const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
 
 // Function to get topic details from localStorage
@@ -241,17 +56,11 @@ const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
   }
   try {
     const storedDetails = localStorage.getItem(LOCAL_STORAGE_DETAILS_KEY);
-    if (storedDetails) {
-      return JSON.parse(storedDetails);
-    } else {
-      // Initialize localStorage ONLY if it's empty
-      localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(DEFAULT_TOPIC_DETAILS));
-      console.log('Initialized localStorage with default topic details.');
-      return DEFAULT_TOPIC_DETAILS;
-    }
+    // If storage is null (never set), return empty object
+    // This prevents initializing with defaults if the user explicitly cleared storage
+    return storedDetails ? JSON.parse(storedDetails) : {};
   } catch (error) {
     console.error("Error accessing or parsing localStorage for topic details:", error);
-    // Don't return defaults here to avoid overriding existing data
     return {}; // Fallback to empty on error
   }
 };
@@ -261,49 +70,14 @@ const saveTopicDetailsToStorage = (details: Record<string, TopicDetail>) => {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
+       // Dispatch storage event for details to notify other parts (like home page)
+       window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_DETAILS_KEY }));
     } catch (error) {
       console.error("Error saving topic details to localStorage:", error);
     }
   }
 };
 
-// Function to save the summary topic list to localStorage
-const saveTopicsSummaryToStorage = (topics: TopicSummary[]) => {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(topics));
-      // Dispatch a storage event to notify other tabs/windows (like the home page)
-      window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_TOPICS_KEY }));
-    } catch (error) {
-      console.error("Error saving topics summary to localStorage:", error);
-    }
-  }
-};
-
-// Function to get the summary topic list from localStorage
-const getTopicsSummaryFromStorage = (): TopicSummary[] => {
-   if (typeof window === 'undefined') return [];
-   try {
-     const stored = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
-     // Important: Only initialize if storage is truly empty (null)
-     if (stored === null) {
-         // Initialize with default topics summary if details are also default
-         const defaultSummary = Object.values(DEFAULT_TOPIC_DETAILS).map(d => ({
-             id: d.id,
-             title: d.title,
-             level: 'Beginner' as 'Beginner', // Default level for summary
-             description: d.description ?? 'Default description',
-         }));
-         localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(defaultSummary));
-         console.log('Initialized topic summary list in localStorage with defaults.');
-         return defaultSummary;
-     }
-     return stored ? JSON.parse(stored) : [];
-   } catch (error) {
-     console.error("Error getting topics summary from localStorage:", error);
-     return [];
-   }
-};
 
 // Function to delete progress data for a topic
 const deleteProgressData = (topicId: string) => {
@@ -345,15 +119,10 @@ export default function TopicPage() {
     // Fetch topic data and level
     const allDetails = getTopicDetailsFromStorage();
     const data = allDetails[topicId];
-    let level: 'Beginner' | 'Intermediate' | 'Advanced' | null = null;
+    const level = data?.level ?? null; // Get level directly from details
 
-    if (data) {
-      // Get level from summary
-      const summaries = getTopicsSummaryFromStorage();
-      const summary = summaries.find(s => s.id === topicId);
-      level = summary?.level ?? 'Beginner'; // Default if summary missing
-    } else {
-      console.log(`Topic details not found for ID: ${topicId}`);
+    if (!data) {
+        console.log(`Topic details not found for ID: ${topicId}`);
     }
 
     setTopicData(data || null);
@@ -493,26 +262,18 @@ export default function TopicPage() {
         currentDetails[topicId] = {
             ...currentDetails[topicId],
             title: updatedTitle,
-            description: updatedDescription, // Assuming description is part of TopicDetail now
+            description: updatedDescription, // Update description in detail
+            level: topicLevel, // Ensure level is preserved
             // Keep existing content structure
         };
-        saveTopicDetailsToStorage(currentDetails);
+        saveTopicDetailsToStorage(currentDetails); // This triggers storage event
      } else {
          console.warn(`Attempted to save details for non-existent topic ID: ${topicId}`);
-         // Optionally handle error or create new entry if needed
          return; // Stop if details don't exist
      }
 
-     // 2. Update summary topic list in localStorage
-     const currentSummary = getTopicsSummaryFromStorage();
-     const updatedSummary = currentSummary.map(topic =>
-       topic.id === topicId
-         ? { ...topic, title: updatedTitle, description: updatedDescription, level: topicLevel } // Keep level
-         : topic
-     );
-     saveTopicsSummaryToStorage(updatedSummary); // This will trigger the storage event
 
-     // 3. Update local state
+     // 2. Update local state
      setTopicData(prevData => prevData ? { ...prevData, title: updatedTitle, description: updatedDescription } : null);
      // topicLevel remains the same, no need to update setTopicLevel
 
@@ -531,20 +292,15 @@ export default function TopicPage() {
     // 1. Delete from detailed topic data in localStorage
     const currentDetails = getTopicDetailsFromStorage();
     delete currentDetails[topicId];
-    saveTopicDetailsToStorage(currentDetails);
+    saveTopicDetailsToStorage(currentDetails); // This will trigger the storage event
 
-    // 2. Delete from summary topic list in localStorage
-    const currentSummary = getTopicsSummaryFromStorage();
-    const updatedSummary = currentSummary.filter(topic => topic.id !== topicId);
-    saveTopicsSummaryToStorage(updatedSummary); // This will trigger the storage event
-
-    // 3. Delete progress data
+    // 2. Delete progress data
     deleteProgressData(topicId);
 
 
     toast({
       title: 'Topic Deleted',
-      description: `"${topicData.title}" has been deleted.`,
+      description: `"${topicData.title}" has been deleted permanently.`,
       variant: 'destructive'
     });
 

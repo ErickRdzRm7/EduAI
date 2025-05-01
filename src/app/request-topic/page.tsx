@@ -31,23 +31,17 @@ import { useRouter } from 'next/navigation';
 import { generateTopicContent, type GenerateTopicContentInput } from '@/ai/flows/generate-topic-content-flow'; // Import the new AI flow
 
 
-// --- Topic Data Management (Duplicated for consistency, ideally centralize) ---
+// --- Topic Data Management ---
 
-interface TopicSummary {
-  id: string;
-  title: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory
-  description: string;
-}
-
+// Detail structure now includes the level
 interface TopicDetail {
   id: string;
   title: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory here
   content: Record<string, string[]>; // Beginner, Intermediate, Advanced content arrays of strings
   description?: string; // Optional description stored in detail
 }
 
-const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics'; // Key for the summary list
 const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
 
 // Function to get topic details from localStorage
@@ -67,37 +61,12 @@ const saveTopicDetailsToStorage = (details: Record<string, TopicDetail>) => {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
-      // Dispatch storage event for details (optional, if other parts need detail updates)
-      // window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_DETAILS_KEY }));
+      // Dispatch storage event for details to notify other parts (like home page)
+      window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_DETAILS_KEY }));
     } catch (error) {
       console.error("Error saving topic details to localStorage:", error);
     }
   }
-};
-
-// Function to save the summary topic list to localStorage
-const saveTopicsSummaryToStorage = (topics: TopicSummary[]) => {
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(topics));
-      // Dispatch a storage event to notify the home page
-      window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_TOPICS_KEY }));
-    } catch (error) {
-      console.error("Error saving topics summary to localStorage:", error);
-    }
-  }
-};
-
-// Function to get the summary topic list from localStorage
-const getTopicsSummaryFromStorage = (): TopicSummary[] => {
-   if (typeof window === 'undefined') return [];
-   try {
-     const stored = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
-     return stored ? JSON.parse(stored) : [];
-   } catch (error) {
-     console.error("Error getting topics summary from localStorage:", error);
-     return [];
-   }
 };
 
 // --- End Topic Data Management ---
@@ -208,47 +177,32 @@ export default function RequestTopicPage() {
          setIsSubmitting(false);
     }
 
-    // 1. Create the new topic summary object
-    const newTopicSummary: TopicSummary = {
-      id: slug,
-      title: values.topicName,
-      level: newTopicLevel, // Assign the specific level
-      description: values.description,
-    };
 
-    // 2. Create the new topic detail object using generated content
+    // 1. Create the new topic detail object using generated content
     const newTopicDetail: TopicDetail = {
       id: slug,
       title: values.topicName,
+      level: newTopicLevel, // Store the chosen level
       description: values.description, // Also store description here
       content: generatedContent, // Use the AI-generated or fallback content
     };
 
-    // 3. Add to localStorage Summary List
-    const currentSummary = getTopicsSummaryFromStorage();
-    const existingSummaryIndex = currentSummary.findIndex(topic => topic.id === slug);
-
-    if (existingSummaryIndex === -1) {
-        // Add new topic if it doesn't exist
-        const updatedSummary = [...currentSummary, newTopicSummary];
-        saveTopicsSummaryToStorage(updatedSummary);
-        console.log(`Added new topic "${slug}" to summary list.`);
-    } else {
-        // Update existing topic in summary if needed (e.g., description or level changed)
-        currentSummary[existingSummaryIndex] = newTopicSummary;
-        saveTopicsSummaryToStorage(currentSummary);
-        console.warn(`Topic with slug "${slug}" already exists in summary. Updated summary entry.`);
-    }
-
-
-    // 4. Add/Update localStorage Details
+    // 2. Add/Update localStorage Details
     const currentDetails = getTopicDetailsFromStorage();
+    // Check if topic ID already exists
+    if (currentDetails[slug]) {
+        toast({
+            title: 'Topic Exists',
+            description: `A topic with the name "${values.topicName}" already exists. Updating content.`,
+            variant: 'default', // Or 'warning' if you prefer
+        });
+    }
     // Always update details, even if slug exists, to ensure content/description is current
     currentDetails[slug] = newTopicDetail;
-    saveTopicDetailsToStorage(currentDetails);
+    saveTopicDetailsToStorage(currentDetails); // This also triggers the storage event for the home page
     console.log(`Created/Updated topic details for slug: ${slug}`);
 
-    // Save progress data structure (initialize as empty)
+    // 3. Save progress data structure (initialize as empty)
     const progressKey = `eduai-progress-${slug}`;
     if (!localStorage.getItem(progressKey)) {
         const initialProgress: Record<string, boolean> = {};
@@ -262,8 +216,8 @@ export default function RequestTopicPage() {
 
 
     toast({
-      title: 'Topic Created',
-      description: `"${values.topicName}" (${newTopicLevel}) created with AI suggestions. Redirecting...`,
+      title: 'Topic Created/Updated',
+      description: `"${values.topicName}" (${newTopicLevel}) created/updated with AI suggestions. Redirecting...`,
     });
 
     // Redirect to the newly created/updated topic page
