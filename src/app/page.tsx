@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation'; // Import useRouter
+import { useDebounce } from '@/hooks/use-debounce'; // Import useDebounce
 
 // --- Topic Data Management ---
 
@@ -209,6 +210,7 @@ export default function Home() {
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [searchTerm, setSearchTerm] = useState(''); // State for search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounce search term
   const router = useRouter();
 
   // Function to load topics
@@ -319,10 +321,10 @@ export default function Home() {
     router.push('/login');
   };
 
-  // Filter topics based on search term
+  // Filter topics based on debounced search term
   const filteredTopics = topics.filter(topic =>
-    topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    topic.description.toLowerCase().includes(searchTerm.toLowerCase())
+    topic.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+    topic.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
   );
 
 
@@ -418,7 +420,7 @@ export default function Home() {
           ) : (
               <div className="col-span-1 md:col-span-2 lg:col-span-3">
                  <p className="empty-state-message">
-                    {searchTerm ? `No topics found for "${searchTerm}". Try requesting it!` : "No topics available. Request one to get started!"}
+                    {debouncedSearchTerm ? `No topics found for "${debouncedSearchTerm}". Try requesting it!` : "No topics available. Request one to get started!"}
                  </p>
               </div>
           )}
