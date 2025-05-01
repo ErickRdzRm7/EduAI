@@ -33,11 +33,11 @@ import { useRouter } from 'next/navigation'; // Import useRouter
 interface Topic {
   id: string;
   title: string;
-  level: string; // Representative level for the card
+  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory
   description: string;
 }
 
-// Default topics if localStorage is empty
+// Default topics only used to initialize localStorage if it's empty
 const DEFAULT_TOPICS: Topic[] = [
   {
     id: 'java-programming',
@@ -82,20 +82,22 @@ const LOCAL_STORAGE_TOPICS_KEY = 'eduai-topics';
 // Function to get topics from localStorage
 const getTopicsFromStorage = (): Topic[] => {
   if (typeof window === 'undefined') {
-    return DEFAULT_TOPICS; // Return default during SSR or if window is unavailable
+    return []; // Return empty array during SSR or if window is unavailable
   }
   try {
     const storedTopics = localStorage.getItem(LOCAL_STORAGE_TOPICS_KEY);
     if (storedTopics) {
       return JSON.parse(storedTopics);
     } else {
-      // Initialize localStorage if empty
+      // Initialize localStorage ONLY if it's empty
       localStorage.setItem(LOCAL_STORAGE_TOPICS_KEY, JSON.stringify(DEFAULT_TOPICS));
+      console.log('Initialized localStorage with default topics.');
       return DEFAULT_TOPICS;
     }
   } catch (error) {
     console.error("Error accessing or parsing localStorage for topics:", error);
-    return DEFAULT_TOPICS; // Fallback to default on error
+    // Don't return defaults here, return empty array to avoid overriding existing data accidentally
+    return []; // Fallback to empty on error
   }
 };
 
@@ -140,7 +142,7 @@ const TopicCard = ({
 }) => {
   return (
     <Link href={`/topics/${slug}`} passHref>
-        <Card className="card transition-all hover:scale-103 hover:shadow-lg"> {/* Applied hover effect */}
+        <Card className="card transition-all hover:scale-[1.03] hover:shadow-lg"> {/* Adjusted hover scale */}
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
         <div className="flex items-center">
             {getTopicIcon(topic)}
@@ -225,7 +227,10 @@ export default function Home() {
         if (!isAuthenticated) {
           router.push('/login');
         } else {
-          setUser({ name: 'User', email: 'user@example.com' });
+          const storedName = localStorage.getItem('userName') || 'User';
+          const storedEmail = localStorage.getItem('userEmail') || 'user@example.com';
+          const storedImageUrl = localStorage.getItem('userImageUrl') || undefined; // Retrieve image URL
+          setUser({ name: storedName, email: storedEmail, imageUrl: storedImageUrl });
         }
       } catch (error) {
         console.error("Error accessing localStorage:", error);
@@ -281,10 +286,11 @@ export default function Home() {
     }
   }, [authLoading, user, loadTopics]);
 
-  // Effect to reload topics if localStorage changes (e.g., after deletion)
+  // Effect to reload topics if localStorage changes (e.g., after creation/deletion)
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === LOCAL_STORAGE_TOPICS_KEY) {
+        console.log('Detected storage change for topics. Reloading...');
         loadTopics();
       }
     };
@@ -303,6 +309,9 @@ export default function Home() {
   const handleSignOut = () => {
     try {
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userName'); // Clear user-specific data
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userImageUrl');
     } catch (error) {
         console.error("Error accessing localStorage:", error);
     }
@@ -409,7 +418,7 @@ export default function Home() {
           ) : (
               <div className="col-span-1 md:col-span-2 lg:col-span-3">
                  <p className="empty-state-message">
-                    {searchTerm ? `No topics found for "${searchTerm}".` : "No topics available."}
+                    {searchTerm ? `No topics found for "${searchTerm}". Try requesting it!` : "No topics available. Request one to get started!"}
                  </p>
               </div>
           )}
@@ -423,5 +432,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

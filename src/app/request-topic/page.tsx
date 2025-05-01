@@ -183,38 +183,44 @@ export default function RequestTopicPage() {
       title: values.topicName,
       description: values.description, // Also store description here
       content: {
-        Beginner: [`Content for ${values.topicName} (Beginner) is being generated...`, `Details: ${values.description}`],
-        Intermediate: [`Content for ${values.topicName} (Intermediate) is being generated...`],
-        Advanced: [`Content for ${values.topicName} (Advanced) is being generated...`],
+        // Provide basic placeholder content for each level
+        Beginner: [`Welcome to ${values.topicName} (Beginner)!`, `Topic Description: ${values.description}`,'More content coming soon...'],
+        Intermediate: [`Welcome to ${values.topicName} (Intermediate)!`, 'More content coming soon...'],
+        Advanced: [`Welcome to ${values.topicName} (Advanced)!`, 'More content coming soon...'],
       },
     };
 
     // 3. Add to localStorage Summary List
     const currentSummary = getTopicsSummaryFromStorage();
-    // Avoid adding duplicates based on slug
-    if (!currentSummary.some(topic => topic.id === slug)) {
+    const existingSummaryIndex = currentSummary.findIndex(topic => topic.id === slug);
+
+    if (existingSummaryIndex === -1) {
+        // Add new topic if it doesn't exist
         const updatedSummary = [...currentSummary, newTopicSummary];
         saveTopicsSummaryToStorage(updatedSummary);
+        console.log(`Added new topic "${slug}" to summary list.`);
     } else {
-        console.warn(`Topic with slug "${slug}" already exists in summary. Skipping summary update.`);
-        // Optionally, update the existing summary if needed
+        // Update existing topic in summary if needed (e.g., description or level changed)
+        currentSummary[existingSummaryIndex] = newTopicSummary;
+        saveTopicsSummaryToStorage(currentSummary);
+        console.warn(`Topic with slug "${slug}" already exists in summary. Updated summary entry.`);
     }
 
 
     // 4. Add/Update localStorage Details
     const currentDetails = getTopicDetailsFromStorage();
-    // Always update details, even if slug exists, to ensure content placeholders are fresh
+    // Always update details, even if slug exists, to ensure content/description is current
     currentDetails[slug] = newTopicDetail;
     saveTopicDetailsToStorage(currentDetails);
+    console.log(`Created/Updated topic details for slug: ${slug}`);
 
-
-    console.log(`Created/Updated topic with slug: ${slug} and level: ${newTopicLevel}`);
 
     toast({
       title: 'Topic Request Submitted',
       description: `"${values.topicName}" (${newTopicLevel}) created/updated. Redirecting...`,
     });
 
+    // Redirect to the newly created/updated topic page
     router.push(`/topics/${slug}`);
   }
 
