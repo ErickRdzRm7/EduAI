@@ -56,38 +56,26 @@ export default function QuizDisplay({
 
   const currentQuestion = questions[currentQuestionIndex];
   const answerStateForCurrentQuestion = answers[currentQuestionIndex];
-  // Check if the answer for the *current* question has been submitted (isCorrect is not null)
+  // Check if an answer has been selected and evaluated for the current question
   const isAnswerSubmitted = answerStateForCurrentQuestion?.isCorrect !== null;
 
   const handleOptionChange = (value: string) => {
     // Only allow changing the answer if it hasn't been submitted yet for the current question
     if (isAnswerSubmitted) return;
 
+    const isCorrect = value === currentQuestion.correctAnswer;
+
     setAnswers((prevAnswers) => {
         const newAnswers = [...prevAnswers];
         newAnswers[currentQuestionIndex] = {
             selectedOption: value,
-            isCorrect: null, // Reset correctness check until submission
+            isCorrect: isCorrect, // Evaluate correctness immediately
         };
         return newAnswers;
     });
+    // No separate submit step needed now
   };
 
-  const handleSubmitAnswer = () => {
-    const selected = answerStateForCurrentQuestion?.selectedOption;
-    // Don't submit if nothing selected or already submitted for the current question
-    if (!selected || isAnswerSubmitted) return;
-
-    const isCorrect = selected === currentQuestion.correctAnswer;
-    setAnswers((prevAnswers) => {
-        const newAnswers = [...prevAnswers];
-        newAnswers[currentQuestionIndex] = {
-            ...newAnswers[currentQuestionIndex], // Keep selectedOption
-            isCorrect: isCorrect,
-        };
-        return newAnswers;
-    });
-  };
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -148,7 +136,7 @@ export default function QuizDisplay({
                   {currentQuestion.options.map((option, index) => {
                     const isSelected = answerStateForCurrentQuestion?.selectedOption === option;
                     const isCorrectAnswer = currentQuestion.correctAnswer === option;
-                    const showFeedback = isAnswerSubmitted; // Show feedback only after submitting
+                    const showFeedback = isAnswerSubmitted; // Show feedback only after selection/submission
 
                     return (
                         <Label
@@ -169,7 +157,7 @@ export default function QuizDisplay({
                             <RadioGroupItem
                                 value={option}
                                 id={`q${currentQuestionIndex}-o${index}`}
-                                disabled={isAnswerSubmitted} // Disable radio button after submission
+                                disabled={isAnswerSubmitted} // Disable radio button after selection
                                 className="shrink-0"
                                 aria-label={option} // Add aria-label for screen readers
                             />
@@ -204,18 +192,11 @@ export default function QuizDisplay({
 
         <DialogFooter className="mt-4 pt-4 border-t">
             {!showResults && (
-                 <div className="flex justify-between w-full">
-                    <Button
-                        variant="outline"
-                        onClick={handleSubmitAnswer}
-                        // Disable submit if no option selected OR if the answer is already submitted for the current question
-                        disabled={!answerStateForCurrentQuestion?.selectedOption || isAnswerSubmitted}
-                    >
-                        Submit Answer
-                    </Button>
+                 <div className="flex justify-end w-full"> {/* Changed justify-between to justify-end */}
+                    {/* Removed Submit Answer Button */}
                     <Button
                         onClick={handleNextQuestion}
-                         // Enable Next/Results only after submitting the current answer
+                         // Enable Next/Results only after selecting an answer for the current question
                          disabled={!isAnswerSubmitted}
                     >
                         {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Show Results'}
