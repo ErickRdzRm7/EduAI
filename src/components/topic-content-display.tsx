@@ -6,12 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 interface TopicContentDisplayProps {
   topicId: string; // Unique ID for the topic
@@ -38,6 +33,7 @@ export default function TopicContentDisplay({ topicId, content, initialLevel }: 
       } else {
         // Initialize if not found (should have been initialized on creation)
         localStorage.setItem(storageKey, JSON.stringify({}));
+        setProgress({}); // Initialize state too
       }
     } catch (error) {
       console.error("Error loading progress from localStorage:", error);
@@ -61,91 +57,99 @@ export default function TopicContentDisplay({ topicId, content, initialLevel }: 
     }
   }, [progress, topicId, isLoadingProgress]);
 
-  const handleCheckboxChange = (level: string, itemIndex: number, checked: boolean | 'indeterminate') => {
+  const handleCheckboxChange = (itemIndex: number, checked: boolean | 'indeterminate') => {
     // Ensure checked is boolean
      if (typeof checked === 'boolean') {
-         const key = `${level}-${itemIndex}`;
+         const key = `${initialLevel}-${itemIndex}`; // Use initialLevel directly
          setProgress(prev => ({ ...prev, [key]: checked }));
      }
   };
 
-  // Calculate progress percentage for a specific level
-  const calculateProgress = (level: string): number => {
-    const items = content[level] ?? [];
+  // Calculate progress percentage for the initial level
+  const calculateProgress = (): number => {
+    const items = content[initialLevel] ?? [];
     if (items.length === 0) return 0;
 
     const completedCount = items.reduce((count, _, index) => {
-      const key = `${level}-${index}`;
+      const key = `${initialLevel}-${index}`;
       return progress[key] ? count + 1 : count;
     }, 0);
 
     return Math.round((completedCount / items.length) * 100);
   };
 
-  const levels = ['Beginner', 'Intermediate', 'Advanced'];
+  const levelContent = content[initialLevel] ?? [];
+  const progressPercent = calculateProgress();
 
   if (isLoadingProgress) {
-     // Optional: Add a loading skeleton here
-     return <p>Loading learning points...</p>;
+     // Loading Skeleton
+     return (
+        <Card className="border-border shadow-sm">
+           <CardHeader className="pb-2">
+              <Skeleton className="h-5 w-32 mb-2" />
+               <Skeleton className="h-2 w-full" />
+           </CardHeader>
+           <CardContent className="space-y-3 pt-2">
+               <div className="flex items-center space-x-3">
+                 <Skeleton className="h-4 w-4" />
+                 <Skeleton className="h-4 w-4/5" />
+               </div>
+               <div className="flex items-center space-x-3">
+                 <Skeleton className="h-4 w-4" />
+                 <Skeleton className="h-4 w-3/4" />
+               </div>
+                <div className="flex items-center space-x-3">
+                 <Skeleton className="h-4 w-4" />
+                 <Skeleton className="h-4 w-5/6" />
+               </div>
+           </CardContent>
+        </Card>
+     );
   }
 
   return (
-    <Accordion type="single" collapsible defaultValue={`item-${initialLevel}`} className="w-full">
-      {levels.map((level) => {
-        const levelContent = content[level] ?? [];
-        const progressPercent = calculateProgress(level);
-        const levelKey = `item-${level}`; // Unique key for AccordionItem
-
-        return (
-          <AccordionItem value={levelKey} key={levelKey}>
-            <AccordionTrigger>
-              <div className="flex justify-between items-center w-full pr-2">
-                <span>{level} Level</span>
-                {levelContent.length > 0 && (
-                    <span className="text-sm text-muted-foreground">
+      <Card className="border-border shadow-sm">
+          <CardHeader className="pb-2">
+             <CardTitle className="text-lg font-medium flex justify-between items-center">
+                 <span>{initialLevel} Level Content</span>
+                 {levelContent.length > 0 && (
+                    <span className="text-sm text-muted-foreground font-normal">
                        {progressPercent}% complete
                     </span>
                 )}
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              {levelContent.length > 0 ? (
-                <Card className="border-none shadow-none"> {/* Remove card border/shadow inside accordion */}
-                  <CardHeader className="pt-0 pb-2"> {/* Adjust padding */}
-                     {/* Progress bar */}
-                     <Progress value={progressPercent} className="w-full h-2" />
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-2"> {/* Adjust padding */}
-                    {levelContent.map((item, index) => {
-                      const itemId = `${levelKey}-${index}`; // Unique ID for checkbox and label
-                      const itemKey = `${level}-${index}`; // Key for progress state
-                      const isChecked = !!progress[itemKey]; // Ensure boolean
+             </CardTitle>
+             {/* Progress bar */}
+             {levelContent.length > 0 && (
+                <Progress value={progressPercent} className="w-full h-2 mt-2" />
+             )}
+          </CardHeader>
+          <CardContent className="space-y-3 pt-4"> {/* Increased top padding */}
+            {levelContent.length > 0 ? (
+              levelContent.map((item, index) => {
+                const itemId = `${initialLevel}-${index}`; // Unique ID for checkbox and label
+                const itemKey = `${initialLevel}-${index}`; // Key for progress state
+                const isChecked = !!progress[itemKey]; // Ensure boolean
 
-                      return (
-                        <div key={itemId} className="flex items-center space-x-3">
-                          <Checkbox
-                            id={itemId}
-                            checked={isChecked}
-                            onCheckedChange={(checked) => handleCheckboxChange(level, index, checked)}
-                          />
-                          <Label
-                            htmlFor={itemId}
-                            className={`flex-1 text-sm ${isChecked ? 'line-through text-muted-foreground' : ''}`}
-                          >
-                            {item}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </CardContent>
-                </Card>
-              ) : (
-                <p className="text-muted-foreground px-6 pb-4 pt-0">No content generated for this level.</p>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        );
-      })}
-    </Accordion>
+                return (
+                  <div key={itemId} className="flex items-center space-x-3">
+                    <Checkbox
+                      id={itemId}
+                      checked={isChecked}
+                      onCheckedChange={(checked) => handleCheckboxChange(index, checked)}
+                    />
+                    <Label
+                      htmlFor={itemId}
+                      className={`flex-1 text-sm ${isChecked ? 'line-through text-muted-foreground' : ''}`}
+                    >
+                      {item}
+                    </Label>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-muted-foreground italic">No learning points available for this level yet.</p>
+            )}
+          </CardContent>
+        </Card>
   );
 }

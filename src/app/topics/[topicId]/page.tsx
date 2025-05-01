@@ -575,14 +575,26 @@ export default function TopicPage() {
             <Skeleton className="h-6 w-24 mb-4 rounded-md" /> {/* Level Badge Skeleton */}
              {/* Skeleton for TopicContentDisplay */}
              <div className="space-y-4">
-                 <Skeleton className="h-10 w-full rounded-md" />
-                 <div className="p-4 space-y-3">
-                     <Skeleton className="h-4 w-full rounded-md"/>
-                     <Skeleton className="h-4 w-5/6 rounded-md"/>
-                     <Skeleton className="h-4 w-full rounded-md"/>
-                 </div>
-                  <Skeleton className="h-10 w-full rounded-md" />
-                  <Skeleton className="h-10 w-full rounded-md" />
+                 <Card className="border-border shadow-sm">
+                   <CardHeader className="pb-2">
+                      <Skeleton className="h-5 w-32 mb-2" />
+                       <Skeleton className="h-2 w-full" />
+                   </CardHeader>
+                   <CardContent className="space-y-3 pt-4">
+                       <div className="flex items-center space-x-3">
+                         <Skeleton className="h-4 w-4" />
+                         <Skeleton className="h-4 w-4/5" />
+                       </div>
+                       <div className="flex items-center space-x-3">
+                         <Skeleton className="h-4 w-4" />
+                         <Skeleton className="h-4 w-3/4" />
+                       </div>
+                        <div className="flex items-center space-x-3">
+                         <Skeleton className="h-4 w-4" />
+                         <Skeleton className="h-4 w-5/6" />
+                       </div>
+                   </CardContent>
+                </Card>
              </div>
             {/* Skeleton for Quiz button */}
             <div className="mt-6">
@@ -681,7 +693,7 @@ export default function TopicPage() {
           <TopicContentDisplay
              topicId={topicId}
              content={topicData.content}
-             initialLevel={topicLevel} // Pass the main level to open by default
+             initialLevel={topicLevel} // Pass the main level to display
           />
 
 
