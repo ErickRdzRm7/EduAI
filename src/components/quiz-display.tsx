@@ -44,8 +44,13 @@ export default function QuizDisplay({
   const [showResults, setShowResults] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
+  const answerStateForCurrentQuestion = answers[currentQuestionIndex];
+  const isAnswerSubmitted = answerStateForCurrentQuestion?.isCorrect !== null;
 
   const handleOptionChange = (value: string) => {
+    // Only allow changing the answer if it hasn't been submitted yet
+    if (isAnswerSubmitted) return;
+
     setAnswers((prev) => ({
       ...prev,
       [currentQuestionIndex]: {
@@ -56,8 +61,8 @@ export default function QuizDisplay({
   };
 
   const handleSubmitAnswer = () => {
-    const selected = answers[currentQuestionIndex]?.selectedOption;
-    if (!selected) return; // Don't submit if nothing selected
+    const selected = answerStateForCurrentQuestion?.selectedOption;
+    if (!selected || isAnswerSubmitted) return; // Don't submit if nothing selected or already submitted
 
     const isCorrect = selected === currentQuestion.correctAnswer;
     setAnswers((prev) => ({
@@ -112,39 +117,42 @@ export default function QuizDisplay({
                 </p>
                 <p className="mb-4">{currentQuestion.question}</p>
                 <RadioGroup
-                  value={answers[currentQuestionIndex]?.selectedOption ?? undefined}
-                  onValueChange={handleOptionChange}
+                  value={answerStateForCurrentQuestion?.selectedOption ?? undefined}
+                  onValueChange={handleOptionChange} // Use the handler defined above
                   className="space-y-2"
-                  disabled={answers[currentQuestionIndex]?.isCorrect !== null} // Disable after submitting
+                  // RadioGroup itself doesn't need to be disabled, handle interaction on items/labels
                 >
                   {currentQuestion.options.map((option, index) => {
-                    const answerState = answers[currentQuestionIndex];
-                    const isSelected = answerState?.selectedOption === option;
+                    const isSelected = answerStateForCurrentQuestion?.selectedOption === option;
                     const isCorrectAnswer = currentQuestion.correctAnswer === option;
-                    const showFeedback = answerState?.isCorrect !== null; // Only show feedback after submit
+                    const showFeedback = isAnswerSubmitted;
 
                     return (
-                        <div
-                        key={index}
-                        className={cn(
-                          "flex items-center space-x-3 rounded-md border p-3 transition-colors",
-                          showFeedback && isCorrectAnswer && "border-green-500 bg-green-500/10",
-                          showFeedback && isSelected && !isCorrectAnswer && "border-red-500 bg-red-500/10",
-                          !showFeedback && isSelected && "border-primary",
-                           answerState?.isCorrect !== null ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-accent/50"
-                        )}
-                        onClick={() => answerState?.isCorrect === null && handleOptionChange(option)} // Allow clicking the div
-                      >
-                         <RadioGroupItem value={option} id={`q${currentQuestionIndex}-o${index}`} disabled={answerState?.isCorrect !== null}/>
+                        // Use a Label as the clickable container for better accessibility
                         <Label
-                          htmlFor={`q${currentQuestionIndex}-o${index}`}
-                          className={cn("flex-1", answerState?.isCorrect !== null ? "cursor-not-allowed" : "cursor-pointer" )}
+                            key={index}
+                            htmlFor={`q${currentQuestionIndex}-o${index}`} // Link label to radio item
+                            className={cn(
+                              "flex items-center space-x-3 rounded-md border p-3 transition-colors",
+                              showFeedback && isCorrectAnswer && "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400", // Style correct answer
+                              showFeedback && isSelected && !isCorrectAnswer && "border-red-500 bg-red-500/10 text-red-700 dark:text-red-400", // Style incorrect selection
+                              !showFeedback && isSelected && "border-primary bg-primary/5", // Style selected before submit
+                              isAnswerSubmitted ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-accent/50" // Adjust cursor and hover based on submitted state
+                            )}
                         >
-                          {option}
-                        </Label>
-                         {showFeedback && isCorrectAnswer && <CheckCircle className="h-5 w-5 text-green-500" />}
-                         {showFeedback && isSelected && !isCorrectAnswer && <XCircle className="h-5 w-5 text-red-500" />}
-                      </div>
+                            <RadioGroupItem
+                                value={option}
+                                id={`q${currentQuestionIndex}-o${index}`}
+                                disabled={isAnswerSubmitted} // Disable radio button after submission
+                                className="shrink-0" // Prevent shrinking
+                            />
+                            <span className="flex-1"> {/* Text part of the label */}
+                              {option}
+                            </span>
+                            {/* Feedback Icons */}
+                            {showFeedback && isCorrectAnswer && <CheckCircle className="h-5 w-5 text-green-500 ml-auto shrink-0" />}
+                            {showFeedback && isSelected && !isCorrectAnswer && <XCircle className="h-5 w-5 text-red-500 ml-auto shrink-0" />}
+                      </Label>
                     );
                   })}
                 </RadioGroup>
@@ -174,13 +182,13 @@ export default function QuizDisplay({
                     <Button
                         variant="outline"
                         onClick={handleSubmitAnswer}
-                        disabled={!answers[currentQuestionIndex]?.selectedOption || answers[currentQuestionIndex]?.isCorrect !== null}
+                        disabled={!answerStateForCurrentQuestion?.selectedOption || isAnswerSubmitted} // Disable submit if no option selected or already submitted
                     >
                         Submit Answer
                     </Button>
                     <Button
                         onClick={handleNextQuestion}
-                         disabled={answers[currentQuestionIndex]?.isCorrect === null} // Enable only after submitting
+                         disabled={!isAnswerSubmitted} // Enable Next/Results only after submitting the current answer
                     >
                         {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Show Results'}
                     </Button>
