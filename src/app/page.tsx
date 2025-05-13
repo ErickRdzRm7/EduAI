@@ -1,6 +1,6 @@
-
 'use client';
 
+import React from 'react'; // Import React for React.memo
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -101,7 +101,7 @@ const getTopicIcon = (topicTitle: string): ReactNode => {
 };
 
 
-const TopicCard = ({
+const TopicCard = React.memo(({ // Wrapped with React.memo
   topic,
   level,
   description,
@@ -128,7 +128,8 @@ const TopicCard = ({
       </Card>
     </Link>
   );
-};
+});
+TopicCard.displayName = 'TopicCard'; // Good practice for DevTools
 
 const TopicCardSkeleton = () => (
   <Card className="animate-pulse shadow-md rounded-lg">
@@ -411,3 +412,4 @@ export default function Home() {
     </div>
   );
 }
+
