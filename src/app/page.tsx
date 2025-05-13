@@ -48,6 +48,7 @@ interface TopicDetail {
 }
 
 const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
+const LOCAL_STORAGE_DELETED_TOPICS_KEY = 'eduai-deleted-topics'; // Key for deleted topic IDs
 
 // Function to get topic details from localStorage
 const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
@@ -56,7 +57,20 @@ const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
   }
   try {
     const storedDetails = localStorage.getItem(LOCAL_STORAGE_DETAILS_KEY);
-    return storedDetails ? JSON.parse(storedDetails) : {};
+    const details = storedDetails ? JSON.parse(storedDetails) : {};
+
+    // Filter out deleted topics
+    const deletedTopicIdsString = localStorage.getItem(LOCAL_STORAGE_DELETED_TOPICS_KEY);
+    if (deletedTopicIdsString) {
+      const deletedTopicIds: string[] = JSON.parse(deletedTopicIdsString);
+      for (const id of deletedTopicIds) {
+        delete details[id];
+      }
+      // Persist the filtered details without the deleted topics
+      localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
+      localStorage.removeItem(LOCAL_STORAGE_DELETED_TOPICS_KEY); // Clean up the deleted list
+    }
+    return details;
   } catch (error) {
     console.error("Error accessing or parsing localStorage for topic details:", error);
     return {}; // Fallback to empty on error
@@ -76,22 +90,21 @@ const deriveTopicsSummaryFromDetails = (details: Record<string, TopicDetail>): T
 
 // --- End Topic Data Management ---
 
-
-// Helper function to get icon based on topic title
-const getTopicIcon = (topicTitle: string): ReactNode => {
-  const lowerTopic = topicTitle.toLowerCase();
+// Memoized TopicIcon component
+const TopicIcon = React.memo(({ title }: { title: string }) => {
+  const lowerTopic = title.toLowerCase();
   if (
     lowerTopic.includes('java') ||
     lowerTopic.includes('programming') ||
     lowerTopic.includes('development') ||
-    lowerTopic.includes('data structures') // Added data structures
+    lowerTopic.includes('data structures')
   ) {
     return <Code className="h-6 w-6 text-accent mr-2" />;
   }
   if (
     lowerTopic.includes('mathematics') ||
     lowerTopic.includes('math') ||
-    lowerTopic.includes('algebra') // Added linear algebra
+    lowerTopic.includes('algebra')
   ) {
     return <Calculator className="h-6 w-6 text-accent mr-2" />;
   }
@@ -99,7 +112,8 @@ const getTopicIcon = (topicTitle: string): ReactNode => {
     return <FlaskConical className="h-6 w-6 text-accent mr-2" />;
   }
   return <Brain className="h-6 w-6 text-accent mr-2" />; // Default icon
-};
+});
+TopicIcon.displayName = 'TopicIcon';
 
 
 const TopicCard = React.memo(({ // Wrapped with React.memo
@@ -115,10 +129,10 @@ const TopicCard = React.memo(({ // Wrapped with React.memo
 }) => {
   return (
     <Link href={`/topics/${slug}`} passHref>
-        <Card className="card transition-all hover:scale-[1.03] hover:shadow-lg"> {/* Adjusted hover scale */}
+        <Card className="card transition-all hover:scale-103 hover:shadow-lg"> {/* Adjusted hover scale */}
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
         <div className="flex items-center">
-            {getTopicIcon(topic)}
+            <TopicIcon title={topic} />
             <CardTitle className="topic-card-title">{topic}</CardTitle>
         </div>
         <span className="level-badge">{level}</span>
@@ -208,37 +222,43 @@ export default function Home() {
           const storedEmail = localStorage.getItem('userEmail') || 'user@example.com';
           const storedImageUrl = localStorage.getItem('userImageUrl') || undefined; // Retrieve image URL
           setUser({ name: storedName, email: storedEmail, imageUrl: storedImageUrl });
-          setAuthLoading(false); // Set loading to false only after user is set
+          // Set loading to false only after user is set, to prevent brief render of home for non-auth
+          setAuthLoading(false);
         }
       } catch (error) {
         console.error("Error accessing localStorage:", error);
         router.push('/login'); // Redirect on error too
       }
-      // Do not setAuthLoading(false) here if redirecting, to avoid brief render of home content
     };
     checkAuth();
   }, [router]);
 
+
   // Theme loading effect
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+    let savedTheme: 'light' | 'dark' = 'dark'; // Default to dark
+    if (typeof window !== 'undefined') {
+      try {
+        const themeFromStorage = localStorage.getItem('theme') as 'light' | 'dark' | null;
+        if (themeFromStorage) {
+          savedTheme = themeFromStorage;
+        }
+      } catch (error) {
+        console.error("Could not access localStorage for theme:", error);
       }
-    } else {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
-       try {
-         localStorage.setItem('theme', 'dark');
-       } catch (error) {
-         console.error("Could not save default theme preference:", error);
-       }
+    }
+    setTheme(savedTheme);
+    // RootLayout's script handles initial class application.
+    // This effect ensures state matches, and applies if script failed or for dynamic changes.
+    if (typeof window !== 'undefined') {
+        if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
     }
   }, []);
+
 
   // Theme application effect
   useEffect(() => {
@@ -266,16 +286,17 @@ export default function Home() {
   // Effect to reload topics if DETAIL storage changes (since summary is derived)
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === LOCAL_STORAGE_DETAILS_KEY) {
-        console.log('Detected storage change for topic details. Reloading summaries...');
+      if (event.key === LOCAL_STORAGE_DETAILS_KEY || event.key === LOCAL_STORAGE_DELETED_TOPICS_KEY) {
+        console.log('Detected storage change for topic details or deletions. Reloading summaries...');
         loadTopics();
       }
     };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    if (typeof window !== 'undefined') {
+        window.addEventListener('storage', handleStorageChange);
+        return () => {
+          window.removeEventListener('storage', handleStorageChange);
+        };
+    }
   }, [loadTopics]);
 
 
@@ -407,3 +428,4 @@ export default function Home() {
     </div>
   );
 }
+
