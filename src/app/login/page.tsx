@@ -13,6 +13,7 @@ import { Facebook } from 'lucide-react'; // Assuming Facebook icon is needed
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation'; // Import useRouter
+import { useEffect } from 'react'; // Import useEffect
 
 // Simple SVG for EduAI logo (Book + Brain/Chip)
 const EduAILogo = () => (
@@ -58,6 +59,20 @@ const GoogleLogo = () => (
 
 export default function LoginPage() {
   const router = useRouter();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    try {
+      const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+      if (isAuthenticated) {
+        router.push('/'); // Redirect to home page if already authenticated
+      }
+    } catch (error) {
+      console.error("Error accessing localStorage:", error);
+      // Handle error, e.g., stay on login page or show an alert
+    }
+  }, [router]);
+
 
   // Generic sign-in handler that simulates authentication
   const handleSignIn = (provider: string) => {

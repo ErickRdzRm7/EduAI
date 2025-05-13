@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react'; // Import React for React.memo
@@ -207,13 +208,13 @@ export default function Home() {
           const storedEmail = localStorage.getItem('userEmail') || 'user@example.com';
           const storedImageUrl = localStorage.getItem('userImageUrl') || undefined; // Retrieve image URL
           setUser({ name: storedName, email: storedEmail, imageUrl: storedImageUrl });
+          setAuthLoading(false); // Set loading to false only after user is set
         }
       } catch (error) {
         console.error("Error accessing localStorage:", error);
-        router.push('/login');
-      } finally {
-        setAuthLoading(false);
+        router.push('/login'); // Redirect on error too
       }
+      // Do not setAuthLoading(false) here if redirecting, to avoid brief render of home content
     };
     checkAuth();
   }, [router]);
@@ -257,7 +258,7 @@ export default function Home() {
 
   // Initial Topic loading effect
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user) { // Ensure user is not null and auth is complete
        loadTopics(); // Load topics after authentication is confirmed
     }
   }, [authLoading, user, loadTopics]);
@@ -288,14 +289,11 @@ export default function Home() {
       localStorage.removeItem('userName'); // Clear user-specific data
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userImageUrl');
-      // Optionally clear all EduAI related storage if desired
-      // Object.keys(localStorage)
-      //   .filter(key => key.startsWith('eduai-'))
-      //   .forEach(key => localStorage.removeItem(key));
     } catch (error) {
         console.error("Error accessing localStorage:", error);
     }
     setUser(null);
+    setAuthLoading(true); // Set auth loading to true to trigger redirect logic
     router.push('/login');
   };
 
@@ -306,21 +304,18 @@ export default function Home() {
   );
 
 
-  if (authLoading) {
+  if (authLoading || !user) { // If still loading auth or user is null (meaning not authenticated or redirecting)
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
-        <Skeleton className="h-12 w-12 rounded-full" />
+        {/* Show a more prominent loader or "Redirecting..." message */}
+        <div className="flex flex-col items-center gap-2">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
-     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-         <p>Redirecting to login...</p>
-      </div>
-     );
-  }
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
@@ -412,4 +407,3 @@ export default function Home() {
     </div>
   );
 }
-
