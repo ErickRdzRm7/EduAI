@@ -1,7 +1,6 @@
-
 'use client';
 
-import React from 'react'; // Import React for React.memo
+import React, { useMemo } from 'react'; // Import React and useMemo
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -318,11 +317,14 @@ export default function Home() {
     router.push('/login');
   };
 
-  // Filter topics based on debounced search term
-  const filteredTopics = topics.filter(topic =>
-    topic.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-    topic.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-  );
+  // Filter topics based on debounced search term - MEMOIZED
+  const filteredTopics = useMemo(() => {
+    if (topicsLoading) return []; // Return empty array while topics are loading
+    return topics.filter(topic =>
+      topic.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (topic.description && topic.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
+    );
+  }, [topics, debouncedSearchTerm, topicsLoading]); // Add topicsLoading to dependency array
 
 
   if (authLoading || !user) { // If still loading auth or user is null (meaning not authenticated or redirecting)
