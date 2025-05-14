@@ -1,0 +1,68 @@
+version: '3.8' # Versión de la sintaxis de Docker Compose
+
+services:
+  # Servicio de Base de Datos PostgreSQL
+  db:
+    image: postgres:15 # Imagen oficial de PostgreSQL
+    container_name: postgres_db_social_auth
+    restart: unless-stopped
+    environment:
+      # Lee las credenciales del archivo .env
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Volumen para persistir datos
+    ports:
+      # Opcional: Expone el puerto 5432 de la BD a tu máquina host (ej. 5433:5432)
+      # Solo si necesitas conectar herramientas de BD externas directamente.
+      # - "5433:5432"
+    networks:
+      - services_network # Conecta a la red personalizada
+
+  # Servicio de tu API Backend (¡Necesitas crear este código!)
+  api:
+    build:
+      context: ./backend # Directorio que contiene el Dockerfile de tu API
+      dockerfile: Dockerfile
+    container_name: social_auth_api
+    restart: unless-stopped
+    depends_on:
+      - db # Asegura que la base de datos inicie antes que la API
+    ports:
+      # Mapea el puerto expuesto de tu host al puerto interno de la API
+      # Accederás a tu API desde http://localhost:${API_HOST_PORT}
+      - "${API_HOST_PORT}:${API_PORT}"
+    environment:
+      # Pasa las variables de entorno necesarias a tu API
+      DATABASE_URL: ${DATABASE_URL} # URL de conexión a la BD (nota que el host es 'db')
+      PORT: ${API_PORT} # Puerto interno que debe escuchar tu API
+      # Credenciales de Social Login (leídas desde .env)
+      FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET}
+      # MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID} # Si lo necesitas
+      # Otros secretos
+      SESSION_SECRET: ${SESSION_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      # Puedes añadir más variables (NODE_ENV=production, etc.)
+    volumes:
+      # Descomenta las siguientes líneas si quieres montar tu código para desarrollo
+      # Esto permite ver cambios sin reconstruir la imagen (si usas algo como nodemon)
+      # - ./backend:/app
+      # Evita que node_modules local sobreescriba el del contenedor (si usas el volumen anterior)
+      # - /app/node_modules
+    networks:
+      - services_network # Conecta a la red personalizada
+
+# Definición de Volúmenes Nombrados
+volumes:
+  postgres_data: # Docker gestiona este volumen para la persistencia de datos de la BD
+
+# Definición de Redes Personalizadas
+networks:
+  services_network: # Red para la comunicación entre servicios
+    driver: bridge
