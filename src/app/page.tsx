@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useCallback } from 'react';
@@ -59,8 +60,13 @@ const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
       for (const id of deletedTopicIds) {
         delete details[id];
       }
-      localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
-      localStorage.removeItem(LOCAL_STORAGE_DELETED_TOPICS_KEY);
+      // Persist changes after processing deletions if any occurred
+      if (deletedTopicIds.length > 0) {
+        localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
+        // It's generally better to clear the deleted topics key only after successfully updating the main details.
+        // However, if this process is frequent, consider a more robust sync mechanism.
+        localStorage.removeItem(LOCAL_STORAGE_DELETED_TOPICS_KEY);
+      }
     }
     return details;
   } catch (error) {
@@ -157,7 +163,7 @@ interface User {
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authProcessed, setAuthProcessed] = useState(false); // Tracks if initial auth check is complete
   const [topics, setTopics] = useState<TopicSummary[]>([]);
   const [topicsLoading, setTopicsLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
@@ -175,24 +181,22 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-        if (!isAuthenticated) {
-          router.push('/login');
-        } else {
-          const storedName = localStorage.getItem('userName') || 'User';
-          const storedEmail = localStorage.getItem('userEmail') || 'user@example.com';
-          const storedImageUrl = localStorage.getItem('userImageUrl') || undefined;
-          setUser({ name: storedName, email: storedEmail, imageUrl: storedImageUrl });
-          setAuthLoading(false);
-        }
-      } catch (error) {
-        console.error("Error accessing localStorage:", error);
-        router.push('/login');
+    try {
+      const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+      if (!isAuthenticated) {
+        router.replace('/login'); // Use replace to not add to history if redirecting from '/'
+      } else {
+        const storedName = localStorage.getItem('userName') || 'User';
+        const storedEmail = localStorage.getItem('userEmail') || 'user@example.com';
+        const storedImageUrl = localStorage.getItem('userImageUrl') || undefined;
+        setUser({ name: storedName, email: storedEmail, imageUrl: storedImageUrl });
       }
-    };
-    checkAuth();
+    } catch (error) {
+      console.error("Error accessing localStorage during auth check:", error);
+      router.replace('/login'); // Fallback to login on error
+    } finally {
+      setAuthProcessed(true); // Mark auth check as complete regardless of outcome
+    }
   }, [router]);
 
   useEffect(() => {
@@ -233,10 +237,11 @@ export default function Home() {
   }, [theme]);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    // Load topics only if user is authenticated and auth has been processed
+    if (authProcessed && user) {
        loadTopics();
     }
-  }, [authLoading, user, loadTopics]);
+  }, [authProcessed, user, loadTopics]);
 
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
@@ -255,7 +260,7 @@ export default function Home() {
 
   const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
-  }, []); // setTheme is stable, so useCallback has empty deps
+  }, []);
 
   const handleSignOut = useCallback(() => {
     try {
@@ -264,16 +269,16 @@ export default function Home() {
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userImageUrl');
     } catch (error) {
-        console.error("Error accessing localStorage:", error);
+        console.error("Error accessing localStorage during sign out:", error);
     }
     setUser(null);
-    setAuthLoading(true);
+    setAuthProcessed(false); // Reset auth processed state, so next navigation to / will re-check
     router.push('/login');
-  }, [router]); // setUser, setAuthLoading are stable, router is stable
+  }, [router]);
 
 
   const filteredTopics = useMemo(() => {
-    if (topicsLoading) return [];
+    if (topicsLoading) return []; // Keep this for while topics are actively loading
     return topics.filter(topic =>
       topic.title.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       (topic.description && topic.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
@@ -281,18 +286,32 @@ export default function Home() {
   }, [topics, debouncedSearchTerm, topicsLoading]);
 
 
-  if (authLoading || !user) {
+  if (!authProcessed) {
+    // Show a minimal loader while initial authentication is being checked.
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-2">
           <Skeleton className="h-12 w-12 rounded-full" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Initializing...</p>
         </div>
       </div>
     );
   }
 
+  if (!user) {
+    // If auth has been processed and there's still no user,
+    // it means the redirect to /login should have occurred or is in progress.
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+         <div className="flex flex-col items-center gap-2">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <p className="text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // If authProcessed is true and user is not null, render the main home page content
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
        <AppHeader
@@ -321,7 +340,7 @@ export default function Home() {
         </div>
         <h2 className="text-xl font-semibold mb-4">Explore Topics</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {topicsLoading ? (
+          {topicsLoading ? ( // This skeleton is for when topics are being loaded, after user is confirmed
             Array.from({ length: 3 }).map((_, index) => <TopicCardSkeleton key={index} />)
           ) : filteredTopics.length > 0 ? (
              filteredTopics.map((topic) => (
