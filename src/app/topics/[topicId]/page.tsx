@@ -48,6 +48,8 @@ interface TopicDetail {
 
 
 const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
+const LOCAL_STORAGE_DELETED_TOPICS_KEY = 'eduai-deleted-topics';
+
 
 // Function to get topic details from localStorage
 const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
@@ -56,8 +58,6 @@ const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
   }
   try {
     const storedDetails = localStorage.getItem(LOCAL_STORAGE_DETAILS_KEY);
-    // If storage is null (never set), return empty object
-    // This prevents initializing with defaults if the user explicitly cleared storage
     return storedDetails ? JSON.parse(storedDetails) : {};
   } catch (error) {
     console.error("Error accessing or parsing localStorage for topic details:", error);
@@ -70,7 +70,6 @@ const saveTopicDetailsToStorage = (details: Record<string, TopicDetail>) => {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
-       // Dispatch storage event for details to notify other parts (like home page)
        window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_DETAILS_KEY }));
     } catch (error) {
       console.error("Error saving topic details to localStorage:", error);
@@ -99,42 +98,39 @@ const deleteProgressData = (topicId: string) => {
 export default function TopicPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const topicId = params.topicId as string;
+
   const [topicData, setTopicData] = useState<TopicDetail | null>(null);
-  const [topicLevel, setTopicLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced' | null>(null); // State for the topic's inherent level
+  const [topicLevel, setTopicLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced' | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [showAiTutor, setShowAiTutor] = useState(false);
-  const { toast } = useToast();
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showQuizConfirmation, setShowQuizConfirmation] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false); // State for edit dialog
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [numQuestions, setNumQuestions] = useState(3);
 
   const loadTopicData = useCallback(() => {
     setLoading(true);
-    // Fetch topic data and level
     const allDetails = getTopicDetailsFromStorage();
     const data = allDetails[topicId];
-    const level = data?.level ?? null; // Get level directly from details
+    const level = data?.level ?? null;
 
     if (!data) {
-        console.log(`Topic details not found for ID: ${topicId}`);
+        console.log(`Topic details not found for ID: ${topicId}. User might be redirected or shown a not found message.`);
     }
-
     setTopicData(data || null);
     setTopicLevel(level);
-
     setLoading(false);
   }, [topicId]);
 
 
   useEffect(() => {
-    // Load theme from localStorage
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const savedTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') as 'light' | 'dark' | null : 'dark';
     if (savedTheme) {
       setTheme(savedTheme);
       if (savedTheme === 'dark') {
@@ -142,45 +138,35 @@ export default function TopicPage() {
       } else {
         document.documentElement.classList.remove('dark');
       }
-    } else {
+    } else if (typeof window !== 'undefined') {
         document.documentElement.classList.add('dark'); // Default to dark
     }
+    loadTopicData();
+  }, [topicId, loadTopicData]);
 
-    loadTopicData(); // Load topic data on initial mount and when topicId changes
-
-  }, [topicId, loadTopicData]); // Add loadTopicData to dependency array
-
-   // Theme application effect
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    if (typeof window !== 'undefined') {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+        }
     }
   }, [theme]);
 
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => {
         const newTheme = prevTheme === 'light' ? 'dark' : 'light';
-        try {
-            localStorage.setItem('theme', newTheme);
-        } catch (error) {
-            console.error("Could not save theme preference:", error);
-        }
-        if (newTheme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        // localStorage and class toggling is handled by the useEffect above
         return newTheme;
     });
-};
+  }, []); // setTheme is stable
 
-  const handleStartQuizGeneration = async () => {
-    if (!topicData || !topicLevel) return; // Need topicLevel too
+  const handleStartQuizGeneration = useCallback(async () => {
+    if (!topicData || !topicLevel) return;
     setShowQuizConfirmation(false);
     setIsGeneratingQuiz(true);
     setQuizQuestions([]);
@@ -188,20 +174,10 @@ export default function TopicPage() {
     try {
         const input: GenerateQuizInput = {
             topic: topicData.title,
-            level: topicLevel, // Use the inherent topic level for quiz generation
+            level: topicLevel,
             numQuestions: numQuestions,
         };
-        // Simulate API call delay
-        // await new Promise(resolve => setTimeout(resolve, 1500));
-        // Generate dummy quiz data if API key is invalid or for simulation
-        // const output: GenerateQuizOutput = {
-        //   quiz: Array.from({ length: numQuestions }, (_, i) => ({
-        //     question: `Simulated Question ${i + 1} for ${topicData.title} (${topicLevel})?`,
-        //     options: [`Option A${i}`, `Option B${i}`, `Option C${i}`, `Option D${i}`],
-        //     correctAnswer: `Option B${i}`, // Example correct answer
-        //   }))
-        // };
-        const output: GenerateQuizOutput = await generateQuiz(input); // Use actual API call
+        const output: GenerateQuizOutput = await generateQuiz(input);
 
         if (output.quiz && output.quiz.length > 0) {
             setQuizQuestions(output.quiz);
@@ -213,20 +189,16 @@ export default function TopicPage() {
                 variant: 'destructive',
             });
         }
-
     } catch (error) {
         console.error('Error generating quiz:', error);
         const errorMsg = error instanceof Error && error.message.includes('API key not valid')
             ? 'Invalid or missing API key for quiz generation.'
             : 'An error occurred while generating the quiz.';
-
         toast({
             title: 'Error Generating Quiz',
             description: errorMsg + ' Displaying simulated quiz data instead.',
             variant: 'destructive',
         });
-
-         // Fallback dummy data
         const fallbackOutput: GenerateQuizOutput = {
           quiz: Array.from({ length: numQuestions }, (_, i) => ({
             question: `Simulated Question ${i + 1} for ${topicData.title} (${topicLevel})?`,
@@ -236,66 +208,65 @@ export default function TopicPage() {
         };
         setQuizQuestions(fallbackOutput.quiz);
         setShowQuiz(true);
-
     } finally {
         setIsGeneratingQuiz(false);
     }
-  };
+  }, [topicData, topicLevel, numQuestions, toast]); // Dependencies are exhaustive
 
-  const handleOpenQuizConfirmation = () => {
+  const handleOpenQuizConfirmation = useCallback(() => {
       setShowQuizConfirmation(true);
-  }
+  }, []); // setShowQuizConfirmation is stable
 
-  // --- Edit and Delete Handlers ---
-  const handleOpenEditDialog = () => {
+  const handleOpenEditDialog = useCallback(() => {
     if (!topicData) return;
     setShowEditDialog(true);
-  };
+  }, [topicData]); // setShowEditDialog is stable
 
-  const handleSaveTopic = (updatedTitle: string, updatedDescription: string) => {
-     if (!topicData || !topicLevel) return; // Need topicLevel
+  const handleSaveTopic = useCallback((updatedTitle: string, updatedDescription: string) => {
+     if (!topicData || !topicLevel) return;
      console.log(`Saving topic: ${updatedTitle} (ID: ${topicId})`);
-
-     // 1. Update detailed topic data in localStorage
      const currentDetails = getTopicDetailsFromStorage();
      if (currentDetails[topicId]) {
         currentDetails[topicId] = {
             ...currentDetails[topicId],
             title: updatedTitle,
-            description: updatedDescription, // Update description in detail
+            description: updatedDescription,
             level: topicLevel, // Ensure level is preserved
-            // Keep existing content structure
         };
-        saveTopicDetailsToStorage(currentDetails); // This triggers storage event
+        saveTopicDetailsToStorage(currentDetails);
      } else {
          console.warn(`Attempted to save details for non-existent topic ID: ${topicId}`);
-         return; // Stop if details don't exist
+         return;
      }
-
-
-     // 2. Update local state
-     setTopicData(prevData => prevData ? { ...prevData, title: updatedTitle, description: updatedDescription } : null);
-     // topicLevel remains the same, no need to update setTopicLevel
-
+     setTopicData(prevData => prevData ? { ...prevData, title: updatedTitle, description: updatedDescription, level: prevData.level, content: prevData.content, id: prevData.id } : null);
      toast({
        title: 'Topic Updated',
        description: `"${updatedTitle}" has been updated successfully.`,
      });
-     setShowEditDialog(false); // Close the dialog
-  };
+     setShowEditDialog(false);
+  }, [topicData, topicLevel, topicId, toast]); // Dependencies are exhaustive
 
-
-  const handleDeleteTopic = () => {
+  const handleDeleteTopic = useCallback(() => {
     if (!topicData) return;
     console.log(`Deleting topic: ${topicData.title} (ID: ${topicId})`);
 
-    // 1. Delete from detailed topic data in localStorage
     const currentDetails = getTopicDetailsFromStorage();
     delete currentDetails[topicId];
-    saveTopicDetailsToStorage(currentDetails); // This will trigger the storage event
+    saveTopicDetailsToStorage(currentDetails);
 
-    // 2. Delete progress data
     deleteProgressData(topicId);
+
+    // Notify home page to remove from its state by setting a flag in localStorage
+    if (typeof window !== 'undefined') {
+        const deletedTopicIdsString = localStorage.getItem(LOCAL_STORAGE_DELETED_TOPICS_KEY);
+        const deletedTopicIds: string[] = deletedTopicIdsString ? JSON.parse(deletedTopicIdsString) : [];
+        if (!deletedTopicIds.includes(topicId)) {
+            deletedTopicIds.push(topicId);
+            localStorage.setItem(LOCAL_STORAGE_DELETED_TOPICS_KEY, JSON.stringify(deletedTopicIds));
+            // Dispatch a storage event so other tabs/components (like home page) can react
+            window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_DELETED_TOPICS_KEY }));
+        }
+    }
 
 
     toast({
@@ -305,31 +276,35 @@ export default function TopicPage() {
     });
 
     setShowDeleteConfirmation(false);
-    router.push('/'); // Redirect to home page
-  };
-  // --- End Edit and Delete Handlers ---
+    router.push('/');
+  }, [topicData, topicId, toast, router]); // Dependencies are exhaustive
+
+  const openAiTutor = useCallback(() => setShowAiTutor(true), []);
+  const closeAiTutor = useCallback(() => setShowAiTutor(false), []);
+  const closeEditDialog = useCallback(() => setShowEditDialog(false), []);
+  const closeQuizDisplay = useCallback(() => {
+    setShowQuiz(false);
+    setQuizQuestions([]);
+  }, []);
 
 
   if (loading) {
     return (
       <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-        {/* Skeleton Header */}
         <header className="flex items-center justify-between flex-wrap gap-4 p-4 bg-secondary rounded-md header-border">
            <div className="flex items-center gap-4">
              <Skeleton className="h-8 w-8 rounded-md" />
              <Skeleton className="h-8 w-48 rounded-md" />
            </div>
-           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0"> {/* Adjusted gap */}
-             <Skeleton className="h-8 w-8 rounded-md" /> {/* Edit Skeleton */}
-             <Skeleton className="h-8 w-8 rounded-md" /> {/* Delete Skeleton */}
-             <Skeleton className="h-8 w-8 rounded-full" /> {/* Theme Skeleton */}
-             <Skeleton className="h-9 w-20 sm:w-28 rounded-md" /> {/* Ask AI Skeleton */}
+           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+             <Skeleton className="h-8 w-8 rounded-md" />
+             <Skeleton className="h-8 w-8 rounded-md" />
+             <Skeleton className="h-8 w-8 rounded-full" />
+             <Skeleton className="h-9 w-20 sm:w-28 rounded-md" />
            </div>
         </header>
-        {/* Skeleton Content */}
         <div className="p-4 space-y-4 flex-grow">
-            <Skeleton className="h-6 w-24 mb-4 rounded-md" /> {/* Level Badge Skeleton */}
-             {/* Skeleton for TopicContentDisplay */}
+            <Skeleton className="h-6 w-24 mb-4 rounded-md" />
              <div className="space-y-4">
                  <Card className="border-border shadow-sm">
                    <CardHeader className="pb-2">
@@ -352,7 +327,6 @@ export default function TopicPage() {
                    </CardContent>
                 </Card>
              </div>
-            {/* Skeleton for Quiz button */}
             <div className="mt-6">
                  <Skeleton className="h-10 w-36 rounded-md"/>
             </div>
@@ -364,7 +338,7 @@ export default function TopicPage() {
     );
   }
 
-  if (!topicData || !topicLevel) { // Check for both data and level
+  if (!topicData || !topicLevel) {
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col items-center justify-center gap-6 min-h-screen text-center">
             <h1 className="text-2xl font-bold text-destructive">Topic Not Found</h1>
@@ -382,26 +356,22 @@ export default function TopicPage() {
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
       <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
-        {/* Left side: Back button and Title */}
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink min-w-0 mr-4"> {/* Allow shrinking, prevent minimum width issues, add margin right */}
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink min-w-0 mr-4">
           <Link href="/" passHref>
-            <Button variant="outline" size="icon" aria-label="Go back home" className="flex-shrink-0"> {/* Prevent button from shrinking */}
+            <Button variant="outline" size="icon" aria-label="Go back home" className="flex-shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold break-words"> {/* Use break-words for long titles */}
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold break-words">
             {topicData.title}
           </h1>
         </div>
 
-        {/* Right side: Action Buttons */}
-         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0"> {/* No wrap, fixed size icons */}
-            {/* Edit Button */}
+         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <Button variant="ghost" size="icon" onClick={handleOpenEditDialog} aria-label="Edit topic">
               <Pencil className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
 
-             {/* Delete Button */}
             <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
               <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label="Delete topic" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
@@ -417,7 +387,7 @@ export default function TopicPage() {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel onClick={() => setShowDeleteConfirmation(false)}>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={handleDeleteTopic} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                     Delete Topic
                   </AlertDialogAction>
@@ -425,35 +395,29 @@ export default function TopicPage() {
               </AlertDialogContent>
             </AlertDialog>
 
-            {/* Theme Toggle Button */}
            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
              {theme === 'light' ? <Moon className="h-4 w-4 sm:h-5 sm:w-5" /> : <Sun className="h-4 w-4 sm:h-5 sm:w-5" />}
            </Button>
 
-           {/* AI Tutor Button */}
-           <Button variant="outline" size="sm" onClick={() => setShowAiTutor(true)}>
+           <Button variant="outline" size="sm" onClick={openAiTutor}>
              <MessageCircle className="mr-1 h-3 w-3 sm:mr-2 sm:h-4 sm:w-4" />
              <span className="hidden sm:inline">Ask AI Tutor</span>
-             <span className="sm:hidden">AI</span> {/* Show 'AI' on smaller screens */}
+             <span className="sm:hidden">AI</span>
            </Button>
          </div>
       </header>
 
       <section className="p-4 flex-grow space-y-6">
-          {/* Display Topic Level Badge */}
           <div className="mb-4">
               <span className="level-badge">{topicLevel}</span>
           </div>
 
-          {/* Display AI-Generated Content with Progress Tracking */}
           <TopicContentDisplay
              topicId={topicId}
              content={topicData.content}
-             initialLevel={topicLevel} // Pass the main level to display
+             initialLevel={topicLevel}
           />
 
-
-           {/* Quiz Button - Placed below the content */}
            <div className="mt-6">
                <Button variant="outline" onClick={handleOpenQuizConfirmation} disabled={isGeneratingQuiz}>
                  {isGeneratingQuiz ? (
@@ -470,30 +434,27 @@ export default function TopicPage() {
            </div>
       </section>
 
-      {/* AI Tutor Drawer/Modal */}
-      {topicData && topicLevel && ( // Ensure topicLevel exists
+      {topicData && topicLevel && (
           <AiTutor
             isOpen={showAiTutor}
-            onClose={() => setShowAiTutor(false)}
+            onClose={closeAiTutor}
             topic={topicData.title}
-            level={topicLevel} // Pass the inherent level
+            level={topicLevel}
           />
       )}
 
-      {/* Edit Topic Dialog */}
       {topicData && (
         <EditTopicDialog
           isOpen={showEditDialog}
-          onClose={() => setShowEditDialog(false)}
+          onClose={closeEditDialog}
           topicTitle={topicData.title}
-          topicDescription={topicData.description ?? ''} // Pass current description
+          topicDescription={topicData.description ?? ''}
           onSave={handleSaveTopic}
         />
       )}
 
 
-       {/* Quiz Confirmation Dialog */}
-        {topicData && topicLevel && ( // Ensure topicLevel exists
+        {topicData && topicLevel && (
             <AlertDialog open={showQuizConfirmation} onOpenChange={setShowQuizConfirmation}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -519,7 +480,7 @@ export default function TopicPage() {
                         </Select>
                     </div>
                     <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel onClick={() => setShowQuizConfirmation(false)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleStartQuizGeneration} disabled={isGeneratingQuiz}>
                         {isGeneratingQuiz ? (
                             <>
@@ -535,17 +496,13 @@ export default function TopicPage() {
             </AlertDialog>
         )}
 
-        {/* Quiz Display Dialog */}
-        {topicData && quizQuestions.length > 0 && topicLevel && ( // Ensure topicLevel exists
+        {topicData && quizQuestions.length > 0 && topicLevel && (
             <QuizDisplay
             isOpen={showQuiz}
-            onClose={() => {
-                 setShowQuiz(false);
-                 setQuizQuestions([]);
-            }}
+            onClose={closeQuizDisplay}
             questions={quizQuestions}
             topic={topicData.title}
-            level={topicLevel} // Pass inherent level
+            level={topicLevel}
             />
         )}
 
@@ -556,4 +513,3 @@ export default function TopicPage() {
     </div>
   );
 }
-
