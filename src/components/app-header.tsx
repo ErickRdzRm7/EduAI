@@ -1,3 +1,4 @@
+
 'use client';
 import React from 'react';
 import Link from 'next/link';
@@ -77,9 +78,11 @@ const AppHeader = React.memo(({ user, theme, onToggleTheme, onSignOut }: AppHead
                <AvatarFallback>{avatarFallbackContent}</AvatarFallback>
              </Avatar>
             </Link>
-            <Link href="/profile" passHref>
-             <span className="cursor-pointer hover:underline hidden sm:block">{user.name}</span>
-            </Link>
+            {user.name !== 'User' && (
+                <Link href="/profile" passHref>
+                    <span className="cursor-pointer hover:underline hidden sm:block">{user.name}</span>
+                </Link>
+            )}
              <Button variant="ghost" size="icon" onClick={onSignOut} aria-label="Sign out">
                <LogOut className="h-5 w-5" />
              </Button>
@@ -92,3 +95,4 @@ const AppHeader = React.memo(({ user, theme, onToggleTheme, onSignOut }: AppHead
 
 AppHeader.displayName = 'AppHeader';
 export default AppHeader;
+
