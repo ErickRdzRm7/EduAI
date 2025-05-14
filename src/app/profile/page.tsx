@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Moon, Sun, User as UserIcon, Trash2, Save, X } from 'lucide-react'; // Added Save, X icons
+import { ArrowLeft, Moon, Sun, User as UserIcon, Trash2, Save, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
@@ -24,10 +24,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Import Tooltip
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
-// Mock user data structure - Ideally fetched from auth context/API
 interface User {
   name: string;
   email?: string;
@@ -42,19 +41,17 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
 
-  // State for editing profile
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
-  const [editEmail, setEditEmail] = useState(''); // Assuming email might be editable in future
+  const [editEmail, setEditEmail] = useState('');
 
-  // Authentication and User Data Fetching
   useEffect(() => {
     const checkAuth = () => {
       try {
         const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
         const storedName = localStorage.getItem('userName') || 'User';
         const storedEmail = localStorage.getItem('userEmail') || 'user@example.com';
-        const storedImageUrl = localStorage.getItem('userImageUrl') || undefined; // Retrieve image URL
+        const storedImageUrl = localStorage.getItem('userImageUrl') || undefined;
 
         if (!isAuthenticated) {
           router.push('/login');
@@ -65,7 +62,7 @@ export default function ProfilePage() {
             imageUrl: storedImageUrl,
           };
           setUser(fetchedUser);
-          setEditName(fetchedUser.name); // Initialize edit state
+          setEditName(fetchedUser.name);
           setEditEmail(fetchedUser.email || '');
         }
       } catch (error) {
@@ -78,22 +75,15 @@ export default function ProfilePage() {
     checkAuth();
   }, [router]);
 
-   // Theme loading effect
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as
-      | 'light'
-      | 'dark'
-      | null;
+    const savedTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') as 'light' | 'dark' | null : 'dark';
     if (savedTheme) {
       setTheme(savedTheme);
-      // RootLayout handles initial class application via script
     }
-    // If no theme is saved, the 'dark' state default is already set
   }, []);
 
-  // Theme application effect - applies class and saves to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') { // Ensure this runs only on the client
+    if (typeof window !== 'undefined') {
       if (theme === 'dark') {
         document.documentElement.classList.add('dark');
       } else {
@@ -108,38 +98,32 @@ export default function ProfilePage() {
   }, [theme]);
 
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
-  };
+  }, []); // setTheme is stable
 
-  // --- Edit Profile Handlers ---
-  const handleEditToggle = () => {
+  const handleEditToggle = useCallback(() => {
     if (!isEditing && user) {
-      // Entering edit mode, initialize edit fields with current user data
       setEditName(user.name);
       setEditEmail(user.email || '');
     }
     setIsEditing(!isEditing);
-  };
+  }, [isEditing, user]); // Dependencies: isEditing, user, setEditName, setEditEmail, setIsEditing (stable)
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = useCallback(() => {
     if (!user) return;
 
     const updatedUser: User = {
       ...user,
-      name: editName.trim() || user.name, // Use current name if editName is empty
-      email: editEmail.trim() || user.email, // Handle email update similarly (if editable)
+      name: editName.trim() || user.name,
+      email: editEmail.trim() || user.email,
     };
 
     try {
-      // Update localStorage
       localStorage.setItem('userName', updatedUser.name);
-      // localStorage.setItem('userEmail', updatedUser.email || ''); // If email is editable
-
-      // Update component state
+      // localStorage.setItem('userEmail', updatedUser.email || '');
       setUser(updatedUser);
-      setIsEditing(false); // Exit edit mode
-
+      setIsEditing(false);
       toast({
         title: "Profile Updated",
         description: "Your profile information has been saved.",
@@ -152,34 +136,33 @@ export default function ProfilePage() {
         variant: "destructive",
       });
     }
-  };
+  }, [user, editName, editEmail, toast]); // Dependencies: user, editName, editEmail, setUser, setIsEditing, toast
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     if (user) {
-      // Reset edit fields to original user data
       setEditName(user.name);
       setEditEmail(user.email || '');
     }
-    setIsEditing(false); // Exit edit mode
-  };
-  // --- End Edit Profile Handlers ---
+    setIsEditing(false);
+  }, [user]); // Dependencies: user, setEditName, setEditEmail, setIsEditing
 
-  const handleDeleteAccount = () => {
+
+  const handleDeleteAccount = useCallback(() => {
     try {
-      // Clear authentication status and any other sensitive user data
       localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userName'); // Clear specific user data
+      localStorage.removeItem('userName');
       localStorage.removeItem('userEmail');
       localStorage.removeItem('userImageUrl');
-      // Example: localStorage.removeItem('userPreferences');
+      // Consider also deleting all topic and progress data associated with the user
+      // This would require iterating through localStorage keys or having a master list.
+      // For simplicity, this example only removes core auth/user data.
 
       toast({
         title: "Account Deleted",
-        description: "Your account information has been removed.",
+        description: "Your account information has been removed from this browser.",
         variant: "destructive",
       });
 
-      // Redirect to login page after a short delay to allow toast to show
       setTimeout(() => {
         router.push('/login');
       }, 1500);
@@ -192,9 +175,9 @@ export default function ProfilePage() {
         variant: "destructive",
       });
     } finally {
-        setShowDeleteConfirmation(false); // Close the dialog regardless of success/error
+        setShowDeleteConfirmation(false);
     }
-  };
+  }, [toast, router]); // Dependencies: toast, router, setShowDeleteConfirmation
 
 
   if (authLoading || !user) {
@@ -245,7 +228,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <TooltipProvider> {/* Wrap with TooltipProvider */}
+    <TooltipProvider>
       <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
         <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
           <div className="flex items-center gap-2 sm:gap-4">
@@ -276,7 +259,6 @@ export default function ProfilePage() {
             <CardContent className="space-y-6">
               <Separator />
 
-              {/* Profile Information Section */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Profile Information</h3>
                 <div className="grid gap-2">
@@ -286,7 +268,7 @@ export default function ProfilePage() {
                     value={isEditing ? editName : user.name}
                     onChange={(e) => isEditing && setEditName(e.target.value)}
                     disabled={!isEditing}
-                    className={!isEditing ? "disabled:cursor-default disabled:opacity-100" : ""} // Keep visible when disabled
+                    className={!isEditing ? "disabled:cursor-default disabled:opacity-100" : ""}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -297,10 +279,9 @@ export default function ProfilePage() {
                     value={isEditing ? editEmail : user.email || ''}
                     onChange={(e) => isEditing && setEditEmail(e.target.value)}
                     disabled // Keep email disabled for now, even in edit mode
-                    className={"disabled:cursor-default disabled:opacity-100"} // Keep visible when disabled
+                    className={"disabled:cursor-default disabled:opacity-100"}
                     />
                 </div>
-                {/* Add more fields as needed, e.g., profile picture upload */}
                 <div className="flex gap-2">
                     {!isEditing ? (
                         <Button variant="outline" onClick={handleEditToggle}>Edit Profile</Button>
@@ -319,12 +300,10 @@ export default function ProfilePage() {
 
               <Separator />
 
-              {/* Account Management Section */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Account Management</h3>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        {/* Wrap disabled button with a span for tooltip to work */}
                         <span tabIndex={0}>
                             <Button variant="outline" disabled style={{ pointerEvents: 'none' }}>
                                 Change Password (N/A for Social Login)
@@ -336,9 +315,6 @@ export default function ProfilePage() {
                     </TooltipContent>
                 </Tooltip>
 
-                {/* Add options for connected accounts if using multiple SSO */}
-
-                {/* Delete Account Button with Confirmation */}
                  <AlertDialog open={showDeleteConfirmation} onOpenChange={setShowDeleteConfirmation}>
                   <AlertDialogTrigger asChild>
                       <Button variant="destructive">
@@ -354,7 +330,7 @@ export default function ProfilePage() {
                       </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogCancel onClick={() => setShowDeleteConfirmation(false)}>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                           onClick={handleDeleteAccount}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -376,4 +352,3 @@ export default function ProfilePage() {
     </TooltipProvider>
   );
 }
-
