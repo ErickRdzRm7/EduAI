@@ -11,5 +11,9 @@
         "express": "^5.1.0",
         "jsonwebtoken": "^9.0.2",
         "pg": "^8.16.0"
+    },
+    "devDependencies": {
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.3"
     }
 }
