@@ -1,4 +1,4 @@
-
+// /path/to/your/LoginPage.tsx (e.g., app/login/page.tsx)
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// Simple SVG for EduAI logo (Book + Brain/Chip) - Remains the same
+// Simple SVG for EduAI logo - Remains the same
 const EduAILogo = () => (
   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto mb-4 text-primary">
     {/* Book */}
@@ -39,38 +39,62 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Redirect if already authenticated - Remains the same
+  // API URL - ideally from environment variables
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5433';
+
+  // Redirect if already authenticated
   useEffect(() => {
     try {
       const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+      // You might also want to check if the token exists and is not expired here
       if (isAuthenticated) {
         router.push('/'); // Redirect to home page if already authenticated
       }
-    } catch (error) {
-      console.error("Error accessing localStorage:", error);
-      // Handle error, e.g., stay on login page or show an alert
+    } catch (e) {
+      console.error("Error accessing localStorage during auth check:", e);
     }
   }, [router]);
 
 
   // Sign-in handler for email/password
-  const handleEmailPasswordSignIn = (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission
-    console.log(`Attempting to sign in with email: ${email}`);
-    // Simulate a successful authentication
+  const handleEmailPasswordSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
     try {
-      localStorage.setItem('isAuthenticated', 'true');
-      // Simulate setting user details (e.g., derive username from email)
-      const username = email.split('@')[0] || 'Demo User';
-      localStorage.setItem('userName', username);
-      localStorage.setItem('userEmail', email);
-      // You might want to clear password from state after submission
-      // setPassword('');
-      router.push('/'); // Redirect to the main page upon successful "login"
-    } catch (error) {
-      console.error("Error accessing localStorage:", error);
-      alert('Login failed. Could not save authentication status.'); // Inform user
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Login successful
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userName', data.user.name); // Assuming backend sends user.name
+        localStorage.setItem('userEmail', data.user.email); // Assuming backend sends user.email
+        // Optionally, store user ID or other non-sensitive info:
+        // localStorage.setItem('userId', data.user.id);
+        
+        router.push('/'); // Redirect to the main page
+      } else {
+        // Login failed - display error message from backend or a generic one
+        setError(data.msg || 'Login failed. Please check your credentials.');
+      }
+    } catch (err) {
+      console.error("Login request failed:", err);
+      setError('An error occurred during login. Please try again later.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -96,6 +120,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-1">
@@ -107,15 +132,21 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
+
+            {error && (
+              <p className="text-sm text-red-600 text-center">{error}</p>
+            )}
+
             <div className="text-right text-sm">
                 <Link href="/forgot-password" className="underline text-muted-foreground hover:text-primary">
                     Forgot password?
                 </Link>
             </div>
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Signing In...' : 'Sign In'}
             </Button>
           </form>
           <div className="mt-6 text-center text-sm">

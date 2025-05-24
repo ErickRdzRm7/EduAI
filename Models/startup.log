@@ -1,0 +1,8 @@
+Servidor de API Express escuchando en el puerto 5433
+[Express Backend] Añadiendo un log extra para confirmar inicio completo del listener.
+Intentando conectar a la base de datos PostgreSQL...
+Conexión exitosa a PostgreSQL! Hora actual del servidor de BD: 2025-05-24T19:30:27.224Z
+Cliente liberado.
+[Express Backend] Cerrando el pool de conexiones de la base de datos...
+[Express Backend] Pool de conexiones cerrado.
+[Express Backend] Servidor HTTP cerrado.
