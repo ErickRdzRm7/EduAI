@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    
     "@genkit-ai/googleai": "^1.0.4",
     "@genkit-ai/next": "^1.0.4",
     "@google/generative-ai": "^0.24.1",
