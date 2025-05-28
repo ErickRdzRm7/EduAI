@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,24 +26,18 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { generateTopicContent, type GenerateTopicContentInput } from '@/ai/flows/generate-topic-content-flow'; // Import the new AI flow
-
+import { useRouter } from 'next/router';
+import { generateTopicContent, type GenerateTopicContentInput } from '@/ai/flows/generate-topic-content-flow';
 
 // --- Topic Data Management ---
-
-// Detail structure now includes the level
 interface TopicDetail {
   id: string;
   title: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced'; // Level is mandatory here
-  content: Record<string, string[]>; // Beginner, Intermediate, Advanced content arrays of strings
-  description?: string; // Optional description stored in detail
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  content: Record<string, string[]>;
+  description?: string;
 }
-
-const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details'; // Key for the detailed content
-
-// Function to get topic details from localStorage
+const LOCAL_STORAGE_DETAILS_KEY = 'eduai-topic-details';
 const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
   if (typeof window === 'undefined') return {};
   try {
@@ -55,66 +48,42 @@ const getTopicDetailsFromStorage = (): Record<string, TopicDetail> => {
     return {};
   }
 };
-
-// Function to save topic details to localStorage
 const saveTopicDetailsToStorage = (details: Record<string, TopicDetail>) => {
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(LOCAL_STORAGE_DETAILS_KEY, JSON.stringify(details));
-      // Dispatch storage event for details to notify other parts (like home page)
       window.dispatchEvent(new StorageEvent('storage', { key: LOCAL_STORAGE_DETAILS_KEY }));
     } catch (error) {
       console.error("Error saving topic details to localStorage:", error);
     }
   }
 };
-
 // --- End Topic Data Management ---
 
-// Helper function to create slugs (consistent with home page)
 const createSlug = (text: string): string => {
-    return text
-      .toLowerCase()
-      .replace(/ /g, '-') // Replace spaces with hyphens
-      .replace(/[^\w-]+/g, ''); // Remove all non-word chars
+  return text.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
 };
 
-
 const formSchema = z.object({
-  topicName: z.string().min(2, {
-    message: 'Topic name must be at least 2 characters.',
-  }),
-  description: z.string().min(10, {
-    message: 'Description must be at least 10 characters.',
-  }),
-  level: z.enum(['Beginner', 'Intermediate', 'Advanced']).default('Beginner'), // Level is now required, default to Beginner
+  topicName: z.string().min(2, { message: 'Topic name must be at least 2 characters.' }),
+  description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
+  level: z.enum(['Beginner', 'Intermediate', 'Advanced']),
 });
 
 export default function RequestTopicPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state for AI generation
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-   // Theme loading effect
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as
-      | 'light'
-      | 'dark'
-      | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (savedTheme) setTheme(savedTheme);
   }, []);
 
-  // Theme application effect
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      document.documentElement.classList.toggle('dark', theme === 'dark');
       try {
         localStorage.setItem('theme', theme);
       } catch (error) {
@@ -123,129 +92,106 @@ export default function RequestTopicPage() {
     }
   }, [theme]);
 
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       topicName: '',
       description: '',
-      level: 'Beginner', // Default level in the form
+      level: 'Beginner' as 'Beginner' | 'Intermediate' | 'Advanced',
     },
   });
 
-  // Updated submit handler to call AI and add topic to localStorage
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     console.log("Submitting topic request:", values);
-
     const slug = createSlug(values.topicName);
-    const newTopicLevel = values.level; // Use the selected level directly
-
+    const newTopicLevel = values.level;
     let generatedContent: TopicDetail['content'];
-
     try {
-        // Call the AI flow to generate content
-        const aiInput: GenerateTopicContentInput = {
-            topicName: values.topicName,
-            description: values.description,
-            baseLevel: newTopicLevel,
-        };
-        // Simulate API delay if needed for testing UI
-        // await new Promise(resolve => setTimeout(resolve, 2000));
-        const aiOutput = await generateTopicContent(aiInput);
-        generatedContent = {
-            Beginner: aiOutput.beginner,
-            Intermediate: aiOutput.intermediate,
-            Advanced: aiOutput.advanced,
-        };
-        console.log("AI generated content:", generatedContent);
-
+      const aiInput: GenerateTopicContentInput = {
+        topicName: values.topicName,
+        description: values.description,
+        baseLevel: newTopicLevel,
+      };
+      const aiOutput = await generateTopicContent(aiInput);
+      generatedContent = {
+        Beginner: aiOutput.beginner,
+        Intermediate: aiOutput.intermediate,
+        Advanced: aiOutput.advanced,
+      };
+      console.log("AI generated content:", generatedContent);
     } catch (error) {
-        console.error("Error generating topic content with AI:", error);
-        toast({
-            title: 'AI Content Generation Failed',
-            description: 'Could not generate learning points. Using placeholders.',
-            variant: 'destructive',
-        });
-        // Fallback placeholder content
-        generatedContent = {
-            Beginner: [`Introduction to ${values.topicName} (Beginner)`, `Topic Description: ${values.description}`,'More content coming soon...'],
-            Intermediate: [`Welcome to ${values.topicName} (Intermediate)!`, 'More content coming soon...'],
-            Advanced: [`Welcome to ${values.topicName} (Advanced)!`, 'More content coming soon...'],
-        };
+      console.error("Error generating topic content with AI:", error);
+      toast({
+        title: 'AI Content Generation Failed',
+        description: 'Could not generate learning points. Using placeholders.',
+        variant: 'destructive',
+      });
+      generatedContent = {
+        Beginner: [`Introduction to ${values.topicName} (Beginner)`, `Topic Description: ${values.description}`, 'More content coming soon...'],
+        Intermediate: [`Welcome to ${values.topicName} (Intermediate)!`, 'More content coming soon...'],
+        Advanced: [`Welcome to ${values.topicName} (Advanced)!`, 'More content coming soon...'],
+      };
     } finally {
-         setIsSubmitting(false);
+      setIsSubmitting(false);
     }
 
-
-    // 1. Create the new topic detail object using generated content
     const newTopicDetail: TopicDetail = {
       id: slug,
       title: values.topicName,
-      level: newTopicLevel, // Store the chosen level
-      description: values.description, // Also store description here
-      content: generatedContent, // Use the AI-generated or fallback content
+      level: newTopicLevel,
+      description: values.description,
+      content: generatedContent,
     };
-
-    // 2. Add/Update localStorage Details
     const currentDetails = getTopicDetailsFromStorage();
-    // Check if topic ID already exists
     if (currentDetails[slug]) {
-        toast({
-            title: 'Topic Exists',
-            description: `A topic with the name "${values.topicName}" already exists. Updating content.`,
-            variant: 'default', // Or 'warning' if you prefer
-        });
+      toast({
+        title: 'Topic Exists',
+        description: `A topic with the name "${values.topicName}" already exists. Updating content.`,
+        variant: 'default',
+      });
     }
-    // Always update details, even if slug exists, to ensure content/description is current
     currentDetails[slug] = newTopicDetail;
-    saveTopicDetailsToStorage(currentDetails); // This also triggers the storage event for the home page
+    saveTopicDetailsToStorage(currentDetails);
     console.log(`Created/Updated topic details for slug: ${slug}`);
 
-    // 3. Save progress data structure (initialize as empty)
     const progressKey = `eduai-progress-${slug}`;
     if (!localStorage.getItem(progressKey)) {
-        const initialProgress: Record<string, boolean> = {};
-        try {
-          localStorage.setItem(progressKey, JSON.stringify(initialProgress));
-          console.log(`Initialized progress tracking for topic: ${slug}`);
-        } catch (e) {
-          console.error(`Failed to initialize progress for ${slug}:`, e);
-        }
+      try {
+        localStorage.setItem(progressKey, JSON.stringify({}));
+        console.log(`Initialized progress tracking for topic: ${slug}`);
+      } catch (e) {
+        console.error(`Failed to initialize progress for ${slug}:`, e);
+      }
     }
-
 
     toast({
       title: 'Topic Created/Updated',
-      description: `"${values.topicName}" (${newTopicLevel}) created/updated with AI suggestions. Redirecting...`,
+      description: `"${values.topicName}" (${newTopicLevel}) created/updated with AI suggestions.`,
     });
-
-    // Redirect to the newly created/updated topic page
-    router.push(`/topics/${slug}`);
+    // Opcional: Redirigir aquí si lo deseas
+    // router.push(`/topics/${slug}`);
   }
 
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
-  };
-
+  const toggleTheme = () => setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
 
   return (
     <div className="container mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6 min-h-screen">
-       <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
+      <header className="flex items-center justify-between flex-wrap gap-y-4 p-4 bg-secondary rounded-md header-border">
         <div className="flex items-center gap-2 sm:gap-4">
-            <Link href="/" passHref>
-                <Button variant="outline" size="icon" aria-label="Go back home">
-                     <ArrowLeft className="h-4 w-4" />
-                </Button>
-            </Link>
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Request New Topic</h1>
+          <Link href="/" passHref>
+            <Button aria-label="Go back home">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Request New Topic</h1>
         </div>
-        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+        <Button className="ghost icon" onClick={toggleTheme} aria-label="Toggle theme">
           {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
         </Button>
       </header>
 
-      <section className="p-4 max-w-2xl mx-auto flex-grow">
+      <section className="p-4 max-w-2xl mx-auto flex-grow space-y-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
@@ -257,9 +203,7 @@ export default function RequestTopicPage() {
                   <FormControl>
                     <Input placeholder="e.g., Quantum Physics, React Hooks" {...field} disabled={isSubmitting} />
                   </FormControl>
-                  <FormDescription>
-                    What topic would you like to learn about? (This will also be used for the URL)
-                  </FormDescription>
+                  <FormDescription>What topic would you like to learn about?</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -275,12 +219,10 @@ export default function RequestTopicPage() {
                       placeholder="Briefly describe what aspects of the topic you're interested in."
                       className="resize-none"
                       {...field}
-                       disabled={isSubmitting}
+                      disabled={isSubmitting}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Providing details helps the AI generate better learning points.
-                  </FormDescription>
+                  <FormDescription>Providing details helps the AI generate better learning points.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -290,7 +232,7 @@ export default function RequestTopicPage() {
               name="level"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Primary Difficulty Level</FormLabel> {/* Changed label */}
+                  <FormLabel>Primary Difficulty Level</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
@@ -298,7 +240,7 @@ export default function RequestTopicPage() {
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select the primary difficulty level" /> {/* Changed placeholder */}
+                        <SelectValue placeholder="Select the primary difficulty level" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -307,9 +249,7 @@ export default function RequestTopicPage() {
                       <SelectItem value="Advanced">Advanced</SelectItem>
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Select the main difficulty level for this topic. The AI will generate points for all levels.
-                  </FormDescription>
+                  <FormDescription>Select the main difficulty level for this topic.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -328,11 +268,11 @@ export default function RequestTopicPage() {
         </Form>
       </section>
 
-       <footer className="p-4 mt-auto text-center text-sm text-muted-foreground">
-         <p className="footer-text">
-           © {new Date().getFullYear()} EduAI. All rights reserved.
-         </p>
-       </footer>
+      <footer className="p-4 mt-auto text-center text-sm text-muted-foreground">
+        <p className="footer-text">
+          © {new Date().getFullYear()} EduAI. All rights reserved.
+        </p>
+      </footer>
     </div>
   );
 }

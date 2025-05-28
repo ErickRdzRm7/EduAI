@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "5b6c21ce-aa96-4fa0-880b-e63864fe1ecc"
+      }
+    },
+    "android": {
+      "package": "com.vengeance7.nextn"
+    },
+    "ios": {
+      "bundleIdentifier": "com.vengeance7.nextn",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

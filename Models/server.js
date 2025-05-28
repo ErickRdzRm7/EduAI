@@ -1,17 +1,40 @@
+// /Users/erick/Documents/proyecto/EduAI/Models/server.js
+
+// --- INICIO: MANEJADORES GLOBALES DE ERRORES ---
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('*******************************************************************');
+  console.error('ERROR GLOBAL: Promesa Rechazada No Manejada (Unhandled Rejection)');
+  console.error('Razón del Rechazo:', reason);
+  console.error('*******************************************************************');
+  // process.exit(1); // Considera salir en producción, pero para depurar puede ser mejor solo loguear
+});
+process.on('uncaughtException', (error) => {
+  console.error('****************************************************************');
+  console.error('ERROR GLOBAL: Excepción No Capturada (Uncaught Exception)');
+  console.error('Error:', error);
+  console.error('Stack del Error:', error.stack);
+  console.error('****************************************************************');
+  process.exit(1);
+});
+// --- FIN: MANEJADORES GLOBALES DE ERRORES ---
+
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
+const { Pool } = require('pg'); // Para autenticación de usuarios
 const cors = require('cors');
+const fs = require('fs').promises; // Para leer/escribir el archivo JSON de temas
+const path = require('path');
+const crypto = require('crypto'); // Para generar IDs únicos para temas
 require('dotenv').config();
 
-// Middleware de autenticación
-const authMiddleware = require('../Middleware/authMiddleware'); // Asegúrate que esta ruta sea correcta
+// Middleware de autenticación (asume que existe y funciona)
+const authMiddleware = require('../Middleware/authMiddleware');
 
 // --- INICIALIZACIÓN DE EXPRESS ---
 const app = express();
 
-// --- CONFIGURACIÓN DEL POOL DE POSTGRESQL ---
+// --- CONFIGURACIÓN DEL POOL DE POSTGRESQL (Para la tabla 'users') ---
 const pool = new Pool({
   user: process.env.POSTGRES_USER,
   host: process.env.POSTGRES_HOST || 'localhost',
@@ -20,27 +43,51 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
 });
 
-// Función para probar la conexión a la BD
-async function testConnection() {
-  let client;
+// --- LÓGICA PARA MANEJAR TOPICS CON ARCHIVO JSON ---
+const TOPICS_FILE_PATH = path.join(__dirname, '../data/topics.json');
+
+async function readTopicsFromFile() {
+  console.log(`[JSON Topics] Intentando leer archivo: ${TOPICS_FILE_PATH}`);
+  let topicsArray = [];
   try {
-    console.log('[Express Backend] Intentando conectar a la base de datos PostgreSQL...');
-    client = await pool.connect();
-    const res = await client.query('SELECT NOW()');
-    console.log('[Express Backend] Conexión exitosa a PostgreSQL! Hora actual del servidor de BD:', res.rows[0].now);
-  } catch (err) {
-    console.error('[Express Backend] Error al conectar o ejecutar consulta en PostgreSQL:', err);
-  } finally {
-    if (client) {
-      client.release();
-      console.log('[Express Backend] Cliente de BD liberado.');
+    await fs.access(TOPICS_FILE_PATH);
+    const fileContent = await fs.readFile(TOPICS_FILE_PATH, 'utf8');
+    if (fileContent.trim() === '') {
+      console.log(`[JSON Topics] Archivo ${TOPICS_FILE_PATH} está vacío. Retornando [].`);
+    } else {
+      const parsedData = JSON.parse(fileContent);
+      if (Array.isArray(parsedData)) {
+        topicsArray = parsedData;
+        console.log(`[JSON Topics] Archivo leído y parseado. Temas cargados: ${topicsArray.length}`);
+      } else {
+        console.warn(`[JSON Topics] Contenido de ${TOPICS_FILE_PATH} no es un array JSON válido. Se recibió tipo: ${typeof parsedData}, valor:`, parsedData, ". Retornando [].");
+      }
     }
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.warn(`[JSON Topics] Archivo ${TOPICS_FILE_PATH} no encontrado. Retornando [] y se intentará crear al guardar.`);
+    } else {
+      console.error(`[JSON Topics] Error al leer o parsear ${TOPICS_FILE_PATH}:`, error.message, ". Retornando [].");
+    }
+  }
+  return topicsArray;
+}
+
+async function writeTopicsToFile(topicsArray) {
+  console.log(`[JSON Topics] Intentando escribir ${topicsArray.length} temas en: ${TOPICS_FILE_PATH}`);
+  try {
+    await fs.mkdir(path.dirname(TOPICS_FILE_PATH), { recursive: true });
+    await fs.writeFile(TOPICS_FILE_PATH, JSON.stringify(topicsArray, null, 2), 'utf8');
+    console.log(`[JSON Topics] Escritura exitosa en ${TOPICS_FILE_PATH}.`);
+  } catch (error) {
+    console.error(`[JSON Topics] Error crítico al escribir en ${TOPICS_FILE_PATH}:`, error);
+    throw new Error('No se pudo guardar la información de los temas en el archivo JSON.');
   }
 }
 
 // --- MIDDLEWARES DE EXPRESS ---
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:9002', // O tu puerto de Next.js
+  origin: process.env.FRONTEND_URL || 'http://localhost:9002',
   optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
@@ -49,187 +96,324 @@ console.log('[Express Backend] Middlewares CORS y JSON aplicados.');
 
 // --- RUTAS DE AUTENTICACIÓN ---
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ msg: 'Por favor, ingrese correo y contraseña.' });
-  }
-  try {
-    const userQuery = await pool.query('SELECT id, email, password_hash, name FROM users WHERE email = $1', [email]);
-    if (userQuery.rows.length === 0) {
-      return res.status(400).json({ msg: 'Credenciales inválidas. Usuario no encontrado.' });
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ msg: 'Email y password son requeridos.' });
+    try {
+        const userQuery = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (userQuery.rows.length === 0) return res.status(400).json({ msg: 'Usuario no encontrado.' });
+        const user = userQuery.rows[0];
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) return res.status(400).json({ msg: 'Contraseña incorrecta.' });
+        const payload = { user: { id: user.id.toString(), name: user.name, email: user.email } };
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+        return res.json({ msg: 'Login exitoso', token, user: payload.user });
+    } catch (err) {
+        console.error('[Express Backend] Error en login:', err.stack);
+        if (!res.headersSent) {
+            return res.status(500).json({ msg: 'Error del servidor en login' });
+        }
     }
-    const user = userQuery.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(400).json({ msg: 'Credenciales inválidas. Contraseña incorrecta.' });
-    }
-    const payload = { user: { id: user.id, email: user.email, name: user.name } };
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
-      if (err) {
-        console.error('[Express Backend] Error al firmar el token JWT:', err);
-        return res.status(500).json({ msg: 'Error al generar el token de autenticación.' });
-      }
-      res.json({ msg: 'Login exitoso!', token, user: { id: user.id, name: user.name, email: user.email } });
-    });
-  } catch (err) {
-    console.error('[Express Backend] Error en /api/auth/login:', err.message, err.stack);
-    res.status(500).send('Error del servidor');
-  }
 });
 
 app.post('/api/auth/register', async (req, res) => {
-  console.log('[Express Backend] --- Inicia /api/auth/register ---');
-  const { name, email, password } = req.body;
-  console.log('[Express Backend] Datos recibidos para registro:', { name, email, password_length: password?.length });
-
-  if (!name || !email || !password) {
-    console.log('[Express Backend] Registro: Validación fallida - campos faltantes');
-    return res.status(400).json({ msg: 'Por favor, ingrese todos los campos: nombre, correo y contraseña.' });
-  }
-  if (password.length < 6) {
-    console.log('[Express Backend] Registro: Validación fallida - contraseña corta');
-    return res.status(400).json({ msg: 'La contraseña debe tener al menos 6 caracteres.' });
-  }
-  try {
-    console.log('[Express Backend] Registro Paso 1: Verificando si el usuario existe...');
-    const existingUserQuery = await pool.query('SELECT email FROM users WHERE email = $1', [email]);
-    console.log('[Express Backend] Registro: Resultado de existingUserQuery.rows.length:', existingUserQuery.rows.length);
-
-    if (existingUserQuery.rows.length > 0) {
-      console.log('[Express Backend] Registro Error: El correo ya está registrado.');
-      return res.status(400).json({ msg: 'El correo electrónico ya está registrado.' });
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ msg: 'Nombre, email y password son requeridos.' });
+    if (password.length < 6) return res.status(400).json({ msg: 'Password debe tener al menos 6 caracteres.' });
+    try {
+        const existingUserQuery = await pool.query('SELECT email FROM users WHERE email = $1', [email]);
+        if (existingUserQuery.rows.length > 0) return res.status(400).json({ msg: 'Email ya registrado.' });
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const newUserQuery = await pool.query(
+            'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email, created_at',
+            [name, email, hashedPassword]
+        );
+        const newUser = newUserQuery.rows[0];
+        const userResponse = { ...newUser, id: newUser.id.toString() };
+        return res.status(201).json({ msg: 'Usuario registrado exitosamente.', user: userResponse });
+    } catch (err) {
+        console.error('[Express Backend] Error en register:', err.stack);
+        if (!res.headersSent) {
+            return res.status(500).json({ msg: 'Error del servidor en registro' });
+        }
     }
-    console.log('[Express Backend] Registro Paso 2: Hasheando contraseña...');
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    console.log('[Express Backend] Registro: Contraseña hasheada (longitud):', hashedPassword?.length);
-
-    console.log('[Express Backend] Registro Paso 3: Insertando nuevo usuario en la BD...');
-    const newUserQuery = await pool.query(
-      'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email, created_at',
-      [name, email, hashedPassword]
-    );
-    
-    if (newUserQuery.rows && newUserQuery.rows.length > 0) {
-      const newUser = newUserQuery.rows[0];
-      console.log('[Express Backend] Registro: Nuevo usuario insertado:', newUser);
-      res.status(201).json({
-        msg: 'Usuario registrado exitosamente.',
-        user: { id: newUser.id, name: newUser.name, email: newUser.email, created_at: newUser.created_at }
-      });
-    } else {
-      console.error('[Express Backend] Registro Error: INSERT no devolvió filas.');
-      res.status(500).json({ msg: 'Error al registrar el usuario, la inserción no devolvió datos.' });
-    }
-  } catch (err) {
-    console.error('[Express Backend] Error en el bloque catch de /api/auth/register:', err.message, err.stack);
-    res.status(500).send('Error del servidor');
-  }
-  console.log('[Express Backend] --- Finaliza /api/auth/register ---');
 });
 
+// --- RUTAS DE TEMAS (usan archivo JSON) ---
 
-// --- RUTAS DE TEMAS (METADATOS) ---
+// GET: Listar todos los temas
+app.get('/api/topics', async (req, res) => {
+  console.log('[Express Backend JSON] Solicitud GET para /api/topics (listar todos)');
+  try {
+    const topics = await readTopicsFromFile();
+    console.log(`[Express Backend JSON] Devolviendo ${topics.length} temas.`);
+    return res.status(200).json(topics);
+  } catch (err) {
+    console.error(`[Express Backend JSON] Error en GET /api/topics (listar todos):`, err.message, err.stack);
+    if (!res.headersSent) {
+      return res.status(500).json({ msg: 'Error interno del servidor al obtener la lista de temas.', details: err.message });
+    }
+  }
+});
 
-/**
- * POST /api/topics
- * Crea los METADATOS para un nuevo tema en la base de datos.
- * El contenido detallado será generado por IA desde el frontend o un endpoint de Next.js.
- * Requiere autenticación.
- */
+// POST: Crear un nuevo tema
 app.post('/api/topics', authMiddleware, async (req, res) => {
-  const userId = req.user.id; // user.id es BIGINT
-  const { title, slug, description, level } = req.body; // No se espera 'ai_generated_content' del cliente aquí
+  console.log('[Express Backend JSON] Ruta POST /api/topics alcanzada.');
+  const userId = req.user.id;
+  const { title, description, level } = req.body;
+  let currentTitleForErrorLog = title || 'Título no proporcionado';
 
-  console.log(`[Express Backend] Intento de crear metadatos de tema por usuario ${userId}: Título "${title}", Slug "${slug}"`);
+  console.log(`[Express Backend JSON] Solicitud de creación de tema por usuario ${userId}: Título "${currentTitleForErrorLog}", Nivel "${level}"`);
 
-  if (!title || !slug || !level) {
-    return res.status(400).json({ msg: 'Título, slug y nivel son requeridos para crear un tema.' });
+  if (!title || !level) {
+    return res.status(400).json({ msg: 'Título (nombre) y nivel son requeridos.' });
   }
   if (!['Beginner', 'Intermediate', 'Advanced'].includes(level)) {
     return res.status(400).json({ msg: 'Nivel inválido. Debe ser Beginner, Intermediate, o Advanced.' });
   }
 
+  let slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+  if (!slug) {
+    return res.status(400).json({ msg: 'El título no es válido para generar un slug.' });
+  }
+  currentTitleForErrorLog = title;
+
   try {
-    const slugCheckQuery = await pool.query('SELECT id FROM topics WHERE slug = $1', [slug]);
-    if (slugCheckQuery.rows.length > 0) {
-      return res.status(400).json({ msg: 'Este slug ya está en uso. Por favor, elige otro.' });
+    let topics = await readTopicsFromFile();
+    console.log(`[Express Backend JSON] Temas leídos antes de añadir. Total actual: ${topics?.length}`);
+    console.log('[Express Backend JSON] Es "topics" un array?:', Array.isArray(topics));
+
+    let slugExists = topics.some(topic => topic.slug === slug); 
+    let counter = 1;
+    const originalSlug = slug;
+    while (slugExists) {
+      slug = `${originalSlug}-${counter}`;
+      counter++;
+      slugExists = topics.some(topic => topic.slug === slug);
+      if (counter > 10) {
+        console.warn('[Express Backend JSON] No se pudo generar slug único tras 10 intentos para:', originalSlug);
+        return res.status(400).json({ msg: 'No se pudo generar un slug único. Intenta con un título ligeramente diferente.' });
+      }
     }
+    console.log(`[Express Backend JSON] Slug final generado: ${slug}`);
 
-    // Insertar solo los metadatos. La columna 'ai_generated_content' en la BD
-    // podría ser NULL o tener un valor por defecto si la IA la poblará después
-    // o si el frontend la maneja sin guardarla aquí.
-    // Para este ejemplo, no insertamos en 'ai_generated_content'.
-    const newTopicQuery = await pool.query(
-      `INSERT INTO topics (user_id, title, slug, description, level) 
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, user_id, title, slug, description, level, created_at, updated_at`, // No se retorna ai_generated_content
-      [userId, title, slug, description || null, level]
-    );
+    const newTopic = {
+      id: crypto.randomUUID(),
+      slug: slug,
+      title: title,
+      description: description || null,
+      level: level,
+      content: { Beginner: [], Intermediate: [], Advanced: [] },
+      user_id: userId.toString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    console.log('[Express Backend JSON] Objeto newTopic preparado:', newTopic);
 
-    const createdTopic = newTopicQuery.rows[0];
-    console.log(`[Express Backend] Metadatos de tema creados en BD para usuario ${userId}: ID del tema ${createdTopic.id}`);
-    res.status(201).json(createdTopic);
+    topics.push(newTopic);
+    console.log('[Express Backend JSON] Nuevo tema añadido al array. Total ahora:', topics.length, 'Escribiendo en archivo...');
+    await writeTopicsToFile(topics);
+
+    console.log(`[Express Backend JSON] Tema creado y guardado en topics.json: ID ${newTopic.id}, Título "${newTopic.title}"`);
+    return res.status(201).json(newTopic);
 
   } catch (err) {
-    console.error(`[Express Backend] Error en POST /api/topics (creando metadatos de tema "${title}"):`, err.message, err.stack);
-    if (err.code === '23505' && (err.constraint === 'topics_slug_key' || err.constraint === 'topics_slug_idx' /* o como se llame tu unique constraint de slug */)) { 
-        return res.status(400).json({ msg: 'Este slug ya está en uso. Por favor, elige otro.'});
+    console.error(`[Express Backend JSON] Error en POST /api/topics ("${currentTitleForErrorLog}"):`, err.message, err.stack);
+    if (!res.headersSent) {
+      return res.status(500).json({ msg: 'Error del servidor al crear el tema.', details: err.message });
     }
-    res.status(500).json({ msg: 'Error del servidor al crear los metadatos del tema.', details: err.message });
   }
 });
 
-/**
- * GET /api/topics/:slug
- * Obtiene los METADATOS de un tema específico por su slug desde la base de datos.
- * El frontend usará estos metadatos para luego solicitar la generación de contenido a la IA.
- */
+// GET: Obtener un tema específico por slug
 app.get('/api/topics/:slug', async (req, res) => {
   const { slug } = req.params;
-  console.log(`[Express Backend] Solicitud GET para metadatos de /api/topics/${slug}`);
+  console.log(`[Express Backend JSON] Solicitud GET para /api/topics/${slug}`);
+  if (!slug) return res.status(400).json({ msg: 'Slug del tema no proporcionado.' });
+  try {
+    const topics = await readTopicsFromFile();
+    console.log('[Express Backend JSON] Es "topics" en GET un array?:', Array.isArray(topics));
+    const topic = topics.find(t => t.slug === slug);
+    if (!topic) {
+      console.log(`[Express Backend JSON] Tema no encontrado en topics.json con slug: ${slug}`);
+      return res.status(404).json({ msg: 'Tema no encontrado.' });
+    }
+    const responsePayload = {
+        ...topic,
+        content: topic.content || { Beginner: [], Intermediate: [], Advanced: [] }
+    };
+    console.log(`[Express Backend JSON] Tema encontrado en topics.json y devuelto: ${topic.title}`);
+    return res.status(200).json(responsePayload);
+  } catch (err) {
+    console.error(`[Express Backend JSON] Error en GET /api/topics/${slug}:`, err.message, err.stack);
+    if (!res.headersSent) {
+        return res.status(500).json({ msg: 'Error interno del servidor al obtener el tema.', details: err.message });
+    }
+  }
+});
 
-  if (!slug) {
-    return res.status(400).json({ msg: 'Slug del tema no proporcionado.' });
+// PUT: Actualizar un tema existente
+app.put('/api/topics/:slug', authMiddleware, async (req, res) => {
+  const currentUserId = req.user.id.toString();
+  const { slug: targetSlug } = req.params;
+  const { title, description, level } = req.body;
+
+  console.log(`[Express Backend JSON] Solicitud PUT para /api/topics/${targetSlug} por usuario ${currentUserId}`);
+
+  if (!title && description === undefined && !level) { // description puede ser null o ""
+    return res.status(400).json({ msg: 'Se requiere al menos un campo para actualizar (title, description, level).' });
+  }
+  if (level && !['Beginner', 'Intermediate', 'Advanced'].includes(level)) {
+    return res.status(400).json({ msg: 'Nivel inválido.' });
   }
 
   try {
-    const topicQuery = await pool.query(
-      // Seleccionamos solo metadatos. 'ai_generated_content' no se gestiona aquí.
-      'SELECT id, slug, title, description, level, user_id, created_at, updated_at FROM topics WHERE slug = $1',
-      [slug]
-    );
+    let topics = await readTopicsFromFile();
+    const topicIndex = topics.findIndex(t => t.slug === targetSlug);
 
-    if (topicQuery.rows.length === 0) {
-      console.log(`[Express Backend] Metadatos de tema no encontrados en BD con slug: ${slug}`);
-      return res.status(404).json({ msg: 'Tema no encontrado.' });
+    if (topicIndex === -1) {
+      console.log(`[Express Backend JSON] PUT: Tema no encontrado con slug: ${targetSlug}`);
+      return res.status(404).json({ msg: 'Tema no encontrado para actualizar.' });
     }
 
-    const topicMetadata = topicQuery.rows[0];    
-    console.log(`[Express Backend] Metadatos de tema encontrados en BD y devueltos: ${topicMetadata.title}`);
-    res.status(200).json(topicMetadata); // Devolvemos solo los metadatos
+    const topicToUpdate = { ...topics[topicIndex] }; // Copiar para evitar modificar el original directamente en el array
+
+    if (topicToUpdate.user_id !== currentUserId) {
+      console.log(`[Express Backend JSON] PUT: Usuario ${currentUserId} no autorizado para editar tema ${targetSlug} (creador: ${topicToUpdate.user_id})`);
+      return res.status(403).json({ msg: 'No tienes permiso para editar este tema.' });
+    }
+
+    let newSlug = topicToUpdate.slug;
+    if (title && title !== topicToUpdate.title) {
+      let potentialNewSlug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+      if (potentialNewSlug && potentialNewSlug !== topicToUpdate.slug) {
+        let slugExists = topics.some((t, index) => index !== topicIndex && t.slug === potentialNewSlug);
+        let counter = 1;
+        const originalPotentialSlug = potentialNewSlug;
+        while (slugExists) {
+          potentialNewSlug = `${originalPotentialSlug}-${counter}`;
+          counter++;
+          slugExists = topics.some((t, index) => index !== topicIndex && t.slug === potentialNewSlug);
+          if (counter > 10) {
+            return res.status(400).json({ msg: 'No se pudo generar un slug único para el nuevo título.' });
+          }
+        }
+        newSlug = potentialNewSlug;
+        console.log(`[Express Backend JSON] PUT: Nuevo slug generado: ${newSlug} para título: ${title}`);
+      }
+    }
+    
+    topics[topicIndex] = {
+      ...topicToUpdate,
+      title: title || topicToUpdate.title,
+      slug: newSlug,
+      description: description !== undefined ? description : topicToUpdate.description,
+      level: level || topicToUpdate.level,
+      updated_at: new Date().toISOString(),
+      // content y user_id se mantienen del original
+      content: topicToUpdate.content, 
+      user_id: topicToUpdate.user_id
+    };
+    
+    await writeTopicsToFile(topics);
+    console.log(`[Express Backend JSON] PUT: Tema actualizado en topics.json: ${topics[topicIndex].title}`);
+    return res.status(200).json(topics[topicIndex]);
 
   } catch (err) {
-    console.error(`[Express Backend] Error en GET /api/topics/${slug} (metadatos):`, err.message, err.stack);
-    res.status(500).json({ msg: 'Error interno del servidor al obtener los metadatos del tema.', details: err.message });
+    console.error(`[Express Backend JSON] Error en PUT /api/topics/${targetSlug}:`, err.message, err.stack);
+    if (!res.headersSent) {
+      return res.status(500).json({ msg: 'Error del servidor al actualizar el tema.', details: err.message });
+    }
   }
+});
+
+// DELETE: Eliminar un tema existente
+app.delete('/api/topics/:slug', authMiddleware, async (req, res) => {
+  const currentUserId = req.user.id.toString();
+  const { slug: targetSlug } = req.params;
+
+  console.log(`[Express Backend JSON] Solicitud DELETE para /api/topics/${targetSlug} por usuario ${currentUserId}`);
+
+  try {
+    let topics = await readTopicsFromFile();
+    const topicIndex = topics.findIndex(t => t.slug === targetSlug);
+
+    if (topicIndex === -1) {
+      console.log(`[Express Backend JSON] DELETE: Tema no encontrado con slug: ${targetSlug}`);
+      return res.status(404).json({ msg: 'Tema no encontrado para eliminar.' });
+    }
+
+    if (topics[topicIndex].user_id !== currentUserId) {
+      console.log(`[Express Backend JSON] DELETE: Usuario ${currentUserId} no autorizado para eliminar tema ${targetSlug} (creador: ${topics[topicIndex].user_id})`);
+      return res.status(403).json({ msg: 'No tienes permiso para eliminar este tema.' });
+    }
+
+    const deletedTopicTitle = topics[topicIndex].title;
+    topics.splice(topicIndex, 1);
+    
+    await writeTopicsToFile(topics);
+    console.log(`[Express Backend JSON] DELETE: Tema "${deletedTopicTitle}" (slug: ${targetSlug}) eliminado de topics.json.`);
+    return res.status(200).json({ msg: `Tema "${deletedTopicTitle}" eliminado exitosamente.` }); // O res.status(204).send(); para no content
+
+  } catch (err) {
+    console.error(`[Express Backend JSON] Error en DELETE /api/topics/${targetSlug}:`, err.message, err.stack);
+    if (!res.headersSent) {
+      return res.status(500).json({ msg: 'Error del servidor al eliminar el tema.', details: err.message });
+    }
+  }
+});
+
+app.put('/api/profile', authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const { name, email } = req.body;
+
+  if (!name && !email) {
+    return res.status(400).json({ msg: 'Debes proporcionar al menos un campo para actualizar (nombre o email).' });
+  }
+
+  try {
+    const updateUserQuery = await pool.query(
+      'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email',
+      [name || null, email || null, userId]
+    );
+
+    if (updateUserQuery.rowCount === 0) {
+      return res.status(404).json({ msg: 'Usuario no encontrado.' });
+    }
+
+    const updatedUser = updateUserQuery.rows[0];
+    return res.status(200).json({ msg: 'Perfil actualizado exitosamente.', user: updatedUser });
+
+  } catch (error) {
+    console.error('[Express Backend] Error al actualizar el perfil:', error.stack);
+    if (!res.headersSent) {
+      return res.status(500).json({ msg: 'Error del servidor al actualizar el perfil.' });
+    }
+  }
+});
+
+
+app.get('/api/test-profile-route', (req, res) => {
+  console.log('[Backend] GET /api/test-profile-route hit!');
+  res.status(200).json({ message: 'Test route works!' });
 });
 
 
 // --- RUTA DE PRUEBA ---
 app.get('/test-server', (req, res) => {
   console.log('[Express Backend] --- Solicitud GET recibida en /test-server ---');
-  res.status(200).send('¡El servidor backend de Express está respondiendo!');
+  return res.status(200).send('¡El servidor backend de Express está respondiendo!');
 });
 
-// --- INICIO DEL SERVIDOR Y LIMPIEZA ---
+// --- INICIO DEL SERVIDOR ---
 const PORT = process.env.API_PORT || 5433;
-let serverInstance; // Definir serverInstance fuera para que sea accesible por cleanup
+let serverInstance;
 
 try {
   serverInstance = app.listen(PORT, () => {
     console.log(`[Express Backend] Servidor de API Express escuchando en el puerto ${PORT}`);
-    // testConnection(); // Comentado según pruebas anteriores, puedes reactivarlo si lo deseas
+    console.log('[Express Backend] El servidor debería permanecer activo ahora.');
+    // testUserDBConnection(); // Puedes descomentar esto si necesitas probar la conexión a PostgreSQL
   });
   console.log('[Express Backend] Llamada a app.listen() completada.');
 
@@ -237,15 +421,15 @@ try {
     console.error('****************************************************************');
     console.error('ERROR EN EL SERVIDOR HTTP (app.listen):', error);
     console.error('****************************************************************');
+    if (error.code === 'EADDRINUSE') {
+        console.error(`El puerto ${PORT} ya está en uso.`);
+    }
     process.exit(1);
   });
-
 } catch (e) {
   console.error('****************************************************************');
-  console.error('ERROR AL INTENTAR INICIAR EL SERVIDOR (catch síncrono alrededor de app.listen):', e);
+  console.error('ERROR AL INTENTAR INICIAR EL SERVIDOR:', e);
   console.error('****************************************************************');
   process.exit(1);
 }
-
-
-console.log('[Express Backend] Fin del script server.js (parte síncrona). Node debería seguir corriendo por app.listen().');
+console.log('[Express Backend] Fin del script server.js (parte síncrona). Node debería seguir corriendo.');

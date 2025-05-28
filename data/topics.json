@@ -1,0 +1,167 @@
+[
+  {
+    "id": "4bde124f-ce94-41fa-9b1e-1350aec36ccf",
+    "slug": "devops",
+    "title": "devops",
+    "description": "linux and servers",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "3",
+    "created_at": "2025-05-25T00:45:05.212Z",
+    "updated_at": "2025-05-25T00:45:05.212Z"
+  },
+  {
+    "id": "58a426af-69a2-4bea-b4af-abbc701dd02e",
+    "slug": "csscs",
+    "title": "csscs",
+    "description": "sisiccsiocsisi",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "3",
+    "created_at": "2025-05-25T01:10:40.834Z",
+    "updated_at": "2025-05-25T01:10:40.834Z"
+  },
+  {
+    "id": "89632fd9-24ce-4d11-a3a0-5e78aa10e87f",
+    "slug": "devops-1",
+    "title": "devops",
+    "description": "linux and servers",
+    "level": "Advanced",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "3",
+    "created_at": "2025-05-25T01:11:22.686Z",
+    "updated_at": "2025-05-25T01:11:22.686Z"
+  },
+  {
+    "id": "211e0b02-19e9-4a40-a6f6-da07232732b1",
+    "slug": "devops-2",
+    "title": "devops",
+    "description": "linux and servers",
+    "level": "Intermediate",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "3",
+    "created_at": "2025-05-25T01:11:54.431Z",
+    "updated_at": "2025-05-25T01:11:54.431Z"
+  },
+  {
+    "id": "4cb41273-350e-41aa-a77a-747b8c2031c6",
+    "slug": "sjsddjdsj",
+    "title": "sjsddjdsj",
+    "description": "ddididiiiii",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "1",
+    "created_at": "2025-05-25T01:13:41.163Z",
+    "updated_at": "2025-05-25T01:13:41.163Z"
+  },
+  {
+    "id": "d95014ee-b976-4735-b0fd-f06278c16a12",
+    "slug": "web",
+    "title": "web",
+    "description": "web front and back",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "1",
+    "created_at": "2025-05-25T01:21:35.473Z",
+    "updated_at": "2025-05-25T01:21:35.473Z"
+  },
+  {
+    "id": "0194ea3e-317f-40a8-84e7-b22028ce54d4",
+    "slug": "linux",
+    "title": "linux",
+    "description": "linux os ooddo",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "1",
+    "created_at": "2025-05-25T01:33:39.902Z",
+    "updated_at": "2025-05-25T01:33:39.902Z"
+  },
+  {
+    "id": "9bdda4d5-320e-419d-b985-db43dfa5dac7",
+    "slug": "soisidsudu",
+    "title": "soisidsudu",
+    "description": "iddddd dududud dududdp",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "1",
+    "created_at": "2025-05-25T01:46:04.112Z",
+    "updated_at": "2025-05-25T01:46:04.112Z"
+  },
+  {
+    "id": "d3c5f506-2fc9-42b9-9331-bebf33522bc0",
+    "slug": "azure",
+    "title": "azure",
+    "description": "azure and devops",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "1",
+    "created_at": "2025-05-25T01:48:24.869Z",
+    "updated_at": "2025-05-25T01:48:24.869Z"
+  },
+  {
+    "id": "534e6683-50a2-4bac-9505-40abdfd08522",
+    "slug": "cssccscs",
+    "title": "cssccscs",
+    "description": "cssccsccscs",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "1",
+    "created_at": "2025-05-25T01:57:58.365Z",
+    "updated_at": "2025-05-25T01:57:58.365Z"
+  },
+  {
+    "id": "5586845f-197c-4014-8508-044b13213a76",
+    "slug": "azure-1",
+    "title": "azure",
+    "description": "azure and devops",
+    "level": "Beginner",
+    "content": {
+      "Beginner": [],
+      "Intermediate": [],
+      "Advanced": []
+    },
+    "user_id": "1",
+    "created_at": "2025-05-25T03:19:08.102Z",
+    "updated_at": "2025-05-25T03:19:08.103Z"
+  }
+]
