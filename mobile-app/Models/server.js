@@ -6,7 +6,7 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('ERROR GLOBAL: Promesa Rechazada No Manejada (Unhandled Rejection)');
   console.error('Razón del Rechazo:', reason);
   console.error('*******************************************************************');
-  // process.exit(1); // Considera salir en producción, pero para depurar puede ser mejor solo loguear
+  
 });
 process.on('uncaughtException', (error) => {
   console.error('****************************************************************');
@@ -30,7 +30,6 @@ require('dotenv').config();
 
 // Middleware de autenticación (asume que existe y funciona)
 const authMiddleware = require('../Middleware/authMiddleware');
-
 // --- INICIALIZACIÓN DE EXPRESS ---
 const app = express();
 

@@ -1,4 +1,4 @@
-// En [TuProyectoNextJS]/app/api/internal/generate-ai-content/route.ts
+
 
 import { type NextRequest, NextResponse } from 'next/server';
 // Asegúrate de que esta ruta de importación sea correcta desde la ubicación de este archivo API:

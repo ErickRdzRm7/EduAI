@@ -5,10 +5,19 @@
         "start": "node Models/server.js",
         "dev": "nodemon Models/server.js"
     },
+    "build": {
+        "preview": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            }
+        }
+    },
     "dependencies": {
-        
         "bcrypt": "^6.0.0",
+        "cors": "^2.8.5",
         "dotenv": "^16.5.0",
+        "expo": "^50.0.0",
         "express": "^5.1.0",
         "jsonwebtoken": "^9.0.2",
         "next": "^15.3.2",

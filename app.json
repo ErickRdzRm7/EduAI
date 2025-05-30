@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "0a4ef068-0a42-45ab-9282-05f890ab63df"
+      }
+    },
+    "android": {
+      "package": "com.vengeance7.eduai"
+    },
+    "ios": {
+      "bundleIdentifier": "com.vengeance7.eduai",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

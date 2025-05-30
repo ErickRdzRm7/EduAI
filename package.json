@@ -1,7 +1,31 @@
 {
   "dependencies": {
+    "expo": "^53.0.9",
+    "expo-status-bar": "~2.2.3",
     "next": "^15.3.2",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-native": "0.79.2",
+    "react-native-webview": "^13.13.5",
+    "react-native-web": "^0.20.0",
+    "@expo/metro-runtime": "~5.0.4"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@react-native-community/cli": "latest",
+    "@types/react": "~19.0.10",
+    "@types/react-native": "^0.72.8",
+    "typescript": "~5.8.3"
+  },
+  "name": "eduai",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "vercel-build": "next build",
+    "web-build": "react-scripts build",
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   }
 }

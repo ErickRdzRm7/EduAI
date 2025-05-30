@@ -33,8 +33,6 @@ const EduAILogo = () => (
     <path d="M16 13l-1.5 -2" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
   </svg>
 );
-
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -42,7 +40,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // API URL - ideally from environment variables
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5433';
 
   // Redirect if already authenticated
@@ -80,10 +77,9 @@ export default function LoginPage() {
         // Login successful
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userName', data.user.name); // Assuming backend sends user.name
-        localStorage.setItem('userEmail', data.user.email); // Assuming backend sends user.email
-        // Optionally, store user ID or other non-sensitive info:
-        // localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('userName', data.user.name); 
+        localStorage.setItem('userEmail', data.user.email); 
+        
         
         router.push('/'); // Redirect to the main page
       } else {
